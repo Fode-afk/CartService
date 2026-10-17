@@ -47,19 +47,24 @@ public sealed class AddCartItemCommandHandler(
         if (quantityResult.IsFailure)
             return quantityResult;
 
+        var productVariantInventorySnapshot = await context.ProductVariantInventorySnapshots
+            .AsNoTracking()
+            .FirstOrDefaultAsync(p => p.ProductVariantId == request.VariantId, cancellationToken);
+
+        if (productVariantInventorySnapshot == null)
+            return Fail(ProductVariantInventorySnapshotErrors.NotFound());
+
         var result = cart.AddItem(
             request.VariantId,
             productSnapshot.ProductId,
             productSnapshot.VendorId,
             quantityResult.Value,
+            productVariantInventorySnapshot.AvailableQuantity,
             productVariantPriceSnapshot.UnitPrice,
             timeProvider.GetUtcNow());
 
         if (result.IsFailure)
             return result;
-
-        if (result.Value != null)
-            context.CartItems.Add(result.Value);
 
         await context.SaveChangesAsync(cancellationToken);
 

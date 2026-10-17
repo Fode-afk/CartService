@@ -9,6 +9,7 @@ namespace CartService.Domain.Models;
 
 public sealed class CartItem : Entity
 {
+    private CartItem() : base(Guid.Empty) { }
     private CartItem(
         Guid id,
         Guid variantId,
@@ -44,29 +45,40 @@ public sealed class CartItem : Entity
     public Money LineTotal => UnitPrice * Quantity.Value;
     public bool IsPriceChangedSinceAdded => UnitPrice != PriceWhenAdded;
 
-    internal static CartItem Create(
+    internal static IResult<CartItem> Create(
         Guid variantId,
-        Guid productId, 
-        Guid vendorId, 
+        Guid productId,
+        Guid vendorId,
         Quantity quantity,
-        Money unitPrice, 
-        DateTimeOffset now) =>
-        new(
-            Guid.NewGuid(),
-            variantId, 
-            productId, 
-            vendorId, 
-            quantity, 
-            unitPrice, 
-            now);
+        Quantity availableQuantity,
+        Money unitPrice,
+        DateTimeOffset now)
+    {
+        if (quantity > availableQuantity)
+            return Fail<CartItem>(CartItemErrors.MaxQuantityReached(availableQuantity));
+
+        return Ok(
+            new CartItem(
+                Guid.NewGuid(),
+                variantId,
+                productId,
+                vendorId,
+                quantity,
+                unitPrice,
+                now));
+    }
 
     internal IResult Increase(
         Quantity delta,
+        Quantity availableQuantity,
         Money currentPrice,
         DateTimeOffset now)
     {
         if (!IsAvailable)
             return Fail(CartItemErrors.Unavailable());
+
+        if ((Quantity + delta) > availableQuantity)
+            return Fail(CartItemErrors.MaxQuantityReached(availableQuantity));
 
         Quantity = Quantity + delta;
         PriceWhenAdded = UnitPrice;
@@ -76,7 +88,10 @@ public sealed class CartItem : Entity
         return Ok();
     }
 
-    internal IResult SetQuantity(Quantity quantity, DateTimeOffset now)
+    internal IResult SetQuantity(
+        Quantity quantity,
+        Quantity availableQuantity,
+        DateTimeOffset now)
     {
         if (Quantity == quantity)
             return Ok();
@@ -84,38 +99,42 @@ public sealed class CartItem : Entity
         if (!IsAvailable)
             return Fail(CartItemErrors.Unavailable());
 
+        if (quantity > availableQuantity)
+            return Fail(CartItemErrors.MaxQuantityReached(availableQuantity));
+
         Quantity = quantity;
         UpdatedAt = now;
 
         return Ok();
     }
 
-    internal void SyncPrice(Money newPrice, DateTimeOffset now)
+    internal bool SyncPrice(Money newPrice, DateTimeOffset now)
     {
         if (UnitPrice == newPrice)
-            return;
+            return false;
 
         UnitPrice = newPrice;
         UpdatedAt = now;
+
+        return true;
     }
 
-    internal void Suspend(CartItemSuspensionReason reason, DateTimeOffset now)
+    internal bool Suspend(CartItemSuspensionReason reason, DateTimeOffset now)
     {
-        if (!IsAvailable)
-            return;
-
-        _suspensionReasons.Add(reason);
+        if (!_suspensionReasons.Add(reason))
+            return false;
 
         UpdatedAt = now;
+
+        return true;
     }
 
-    internal void TryRestore(CartItemSuspensionReason reason, DateTimeOffset now)
+    internal bool TryRestore(CartItemSuspensionReason reason, DateTimeOffset now)
     {
-        if (IsAvailable)
-            return;
+        if (!_suspensionReasons.Remove(reason))
+            return false;
 
-        _suspensionReasons.Remove(reason);
-            
         UpdatedAt = now;
+        return true;
     }
 }

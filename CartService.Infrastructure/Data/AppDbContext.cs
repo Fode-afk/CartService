@@ -1,10 +1,12 @@
 ﻿using CartService.Application.Interfaces.Data;
 using CartService.Domain.Models;
 using CartService.Domain.Primitives;
+using CartService.Domain.Snapshots;
 using CartService.Infrastructure.DomainEvents;
 using MassTransit;
 using MassTransit.EntityFrameworkCoreIntegration;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 
 namespace CartService.Infrastructure.Data;
 
@@ -14,6 +16,11 @@ internal sealed class AppDbContext(
 {
     public DbSet<Cart> Carts { get; set; }
     public DbSet<CartItem> CartItems { get; set; }
+
+    public DbSet<ProductSnapshot> ProductSnapshots { get; set; }
+    public DbSet<ProductVariantSnapshot> ProductVariantSnapshots { get; set; }
+    public DbSet<ProductVariantPriceSnapshot> ProductVariantPriceSnapshots { get; set; }
+    public DbSet<ProductVariantInventorySnapshot> ProductVariantInventorySnapshots { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -75,4 +82,9 @@ internal sealed class AppDbContext(
         foreach (var entry in ChangeTracker.Entries<AggregateRoot>())
             entry.Entity.ClearDomainEvents();
     }
+
+    public Task<IDbContextTransaction> BeginTransactionAsync(CancellationToken cancellationToken = default) =>
+        Database.BeginTransactionAsync(cancellationToken);
+
+    public void ClearChangeTracker() => ChangeTracker.Clear();
 }

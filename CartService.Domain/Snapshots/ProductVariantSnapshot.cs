@@ -2,6 +2,6 @@
 
 public sealed class ProductVariantSnapshot
 {
-    public Guid ProductVariantId { get; set; }
-    public Guid ProductId { get; set; }
+    public Guid ProductVariantId { get; init; }
+    public Guid ProductId { get; init; }
 }

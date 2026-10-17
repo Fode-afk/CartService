@@ -1,0 +1,5 @@
+﻿using MediatR;
+
+namespace CartService.Application.Features.IntegrationEventHandlers.ProductVariantInventorySnapshot.DeleteProductVariantInventorySnapshot;
+
+public sealed record DeleteProductVariantInventorySnapshotCommand(Guid ProductVariantId) : IRequest;

@@ -1,4 +1,4 @@
-﻿using CatalogService.Application.Features.IntegrationEventHandlers.ProductVariantSnapshot.DeleteProductVariantSnapshot;
+﻿using CartService.Application.Features.IntegrationEventHandlers.ProductVariantSnapshot.DeleteProductVariantSnapshot;
 using MassTransit;
 using MediatR;
 using migApp.Shared.Messaging.IntegrationEvents.ProductVariants;

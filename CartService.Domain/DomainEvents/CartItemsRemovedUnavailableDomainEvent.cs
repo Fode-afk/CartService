@@ -2,6 +2,4 @@
 
 namespace CartService.Domain.DomainEvents;
 
-public sealed record CartItemsRemovedUnavailableDomainEvent(
-    Guid CartId,
-    long Version) : IDomainEvent;
+public sealed record CartItemsRemovedUnavailableDomainEvent(Guid BuyerId) : IDomainEvent;

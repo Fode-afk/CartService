@@ -5,7 +5,7 @@ using static migApp.Shared.Results.ResultFactory;
 
 namespace CartService.Domain.ValueObjects;
 
-public sealed class Quantity : ValueObject
+public sealed class Quantity : ValueObject, IComparable<Quantity>
 {
     public int Value { get; }
     private Quantity(int value) =>
@@ -16,28 +16,34 @@ public sealed class Quantity : ValueObject
             Fail<Quantity>(QuantityErrors.Negative()) :
             Ok(new Quantity(value));
 
-    public static Quantity operator +(Quantity left, Quantity right)
+    public static Quantity operator +(Quantity left, Quantity right) => CreateOrThrow(left.Value + right.Value);
+    public static Quantity operator -(Quantity left, Quantity right) => CreateOrThrow(left.Value - right.Value);
+
+    public static bool operator >(Quantity left, Quantity right) => left.CompareTo(right) > 0;
+    public static bool operator <(Quantity left, Quantity right) => left.CompareTo(right) < 0;
+    public static bool operator >=(Quantity left, Quantity right) => left.CompareTo(right) >= 0;
+    public static bool operator <=(Quantity left, Quantity right) => left.CompareTo(right) <= 0;
+
+    public int CompareTo(Quantity? other)
     {
-        var result = Create(left.Value + right.Value);
+        if (other is null)
+            return 1;
 
-        if (result.IsFailure)
-            throw new InvalidOperationException(result.Error.Code);
-
-        return result.Value;
-    }
-
-    public static Quantity operator -(Quantity left, Quantity right)
-    {
-        var result = Create(left.Value - right.Value);
-
-        if (result.IsFailure)
-            throw new InvalidOperationException(result.Error.Code);
-
-        return result.Value;
+        return Value.CompareTo(other.Value);
     }
 
     public override IEnumerable<object> GetAtomicValues()
     {
         yield return Value;
+    }
+
+    public override string ToString() => Value.ToString();
+
+    private static Quantity CreateOrThrow(int value)
+    {
+        var result = Create(value);
+        return result.IsSuccess
+            ? result.Value
+            : throw new InvalidOperationException(result.Error.Code);
     }
 }

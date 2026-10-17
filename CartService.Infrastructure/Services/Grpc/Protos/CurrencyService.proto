@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+option csharp_namespace = "CurrencyService.Api.Grpc.V1.Protos";
+
+package currency.v1;
+
+service CurrencyService {
+	rpc GetExchangeRate(GetExchangeRateRequest) returns (GetExchangeRateResponse);
+}
+
+message GetExchangeRateRequest {
+	string currency_from = 1;
+	string currency_to = 2;
+}
+
+message GetExchangeRateResponse {
+	string rate = 1;
+}

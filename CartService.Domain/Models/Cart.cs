@@ -10,6 +10,7 @@ namespace CartService.Domain.Models;
 
 public sealed class Cart : AggregateRoot
 {
+    private Cart() : base(Guid.Empty) { }
     private Cart(
         Guid id,
         Guid buyerId,
@@ -44,16 +45,17 @@ public sealed class Cart : AggregateRoot
             buyerId, 
             now);
 
-        cart.RaiseDomainEvent(new CartCreatedDomainEvent(cart.Id));
+        cart.RaiseDomainEvent(new CartCreatedDomainEvent(cart.BuyerId));
 
         return cart;
     }
 
-    public IResult<CartItem?> AddItem(
+    public IResult AddItem(
         Guid variantId,
         Guid productId, 
         Guid vendorId, 
-        Quantity quantity, 
+        Quantity quantity,
+        Quantity availableQuantity,
         Money unitPrice, DateTimeOffset now)
     {
         var existing = _items.FirstOrDefault(i => i.VariantId == variantId);
@@ -62,41 +64,48 @@ public sealed class Cart : AggregateRoot
         if (existing is null)
         {
             if (_items.Count >= MaxDistinctItems)
-                return Fail<CartItem>(CartErrors.DistinctItemsLimitReached(MaxDistinctItems));
+                return Fail(CartErrors.DistinctItemsLimitReached(MaxDistinctItems));
 
-            var item = CartItem.Create(
+            var itemResult = CartItem.Create(
                 variantId,
                 productId,
                 vendorId,
                 quantity,
+                availableQuantity,
                 unitPrice,
                 now);
 
-            _items.Add(item);
-            cartItem = item;
+            if (itemResult.IsFailure)
+                return itemResult;
+
+            _items.Add(itemResult.Value);
+            cartItem = itemResult.Value;
         }
         else
         {
-            var result = existing.Increase(quantity, unitPrice, now);
+            var result = existing.Increase(
+                quantity, 
+                availableQuantity,
+                unitPrice,
+                now);
 
             if (result.IsFailure)
-                return Fail<CartItem>(result.Error);
+                return result;
         }
 
         UpdatedAt = now;
 
         IncreaseVersion();
 
-        RaiseDomainEvent(new CartItemAddedDomainEvent(
-            Id,
-            Version));
+        RaiseDomainEvent(new CartItemAddedDomainEvent(BuyerId));
 
-        return Ok(cartItem);
+        return Ok();
     }
 
     public IResult ChangeQuantity(
         Guid variantId,
-        Quantity quantity, 
+        Quantity quantity,
+        Quantity availableQuantity,
         DateTimeOffset now)
     {
         var item = _items.FirstOrDefault(i => i.VariantId == variantId);
@@ -104,18 +113,29 @@ public sealed class Cart : AggregateRoot
         if (item is null) 
             return Fail(CartItemErrors.NotFound());
 
-        var result = item.SetQuantity(quantity, now);
+        if (quantity.Value == 0)
+        {
+            _items.Remove(item);
 
-        if (result.IsFailure) 
+            UpdatedAt = now;
+
+            IncreaseVersion();
+
+            RaiseDomainEvent(new CartItemRemovedDomainEvent(BuyerId));
+
+            return Ok();
+        }
+
+        var result = item.SetQuantity(quantity, availableQuantity, now);
+
+        if (result.IsFailure)
             return result;
 
         UpdatedAt = now;
 
         IncreaseVersion();
 
-        RaiseDomainEvent(new CartItemQuantityChangedDomainEvent(
-            Id, 
-            Version));
+        RaiseDomainEvent(new CartItemQuantityChangedDomainEvent(BuyerId));
 
         return Ok();
     }
@@ -133,9 +153,7 @@ public sealed class Cart : AggregateRoot
 
         IncreaseVersion();
 
-        RaiseDomainEvent(new CartItemRemovedDomainEvent(
-            Id, 
-            Version));
+        RaiseDomainEvent(new CartItemRemovedDomainEvent(BuyerId));
 
         return Ok();
     }
@@ -151,9 +169,7 @@ public sealed class Cart : AggregateRoot
 
         IncreaseVersion();
 
-        RaiseDomainEvent(new CartClearedDomainEvent(
-            Id, 
-            Version));
+        RaiseDomainEvent(new CartClearedDomainEvent(BuyerId));
 
         return Ok();
     }
@@ -169,9 +185,7 @@ public sealed class Cart : AggregateRoot
 
         IncreaseVersion();
 
-        RaiseDomainEvent(new CartItemsRemovedUnavailableDomainEvent(
-            Id,
-            Version));
+        RaiseDomainEvent(new CartItemsRemovedUnavailableDomainEvent(BuyerId));
 
         return Ok();
     }
@@ -188,18 +202,40 @@ public sealed class Cart : AggregateRoot
 
         var old = item.UnitPrice;
 
-        item.SyncPrice(newPrice, now);
+        if (!item.SyncPrice(newPrice, now))
+            return Ok();
 
         UpdatedAt = now;
 
         IncreaseVersion();
 
-        RaiseDomainEvent(new CartItemPriceChangedDomainEvent(
-            Id,
-            Version));
+        RaiseDomainEvent(new CartItemPriceChangedDomainEvent(BuyerId));
 
         return Ok();
     }
+
+    public IResult SuspendItem(
+        Guid variantId,
+        CartItemSuspensionReason reason,
+        DateTimeOffset now)
+    {
+        var item = _items.FirstOrDefault(i => i.VariantId == variantId);
+
+        if (item == null)
+            return Fail(CartItemErrors.NotFound());
+
+        if (!item.Suspend(reason, now))
+            return Ok();
+
+        UpdatedAt = now;
+
+        IncreaseVersion();
+
+        RaiseDomainEvent(new CartItemSuspendedDomainEvent(BuyerId));
+
+        return Ok();
+    }
+
     public IResult SuspendItems(
         Guid productId,
         CartItemSuspensionReason reason,
@@ -217,9 +253,29 @@ public sealed class Cart : AggregateRoot
 
         IncreaseVersion();
 
-        RaiseDomainEvent(new CartItemsSuspendedDomainEvent(
-            Id,
-            Version));
+        RaiseDomainEvent(new CartItemsSuspendedDomainEvent(BuyerId));
+
+        return Ok();
+    }
+
+    public IResult TryRestoreItem(
+       Guid variantId,
+       CartItemSuspensionReason reason,
+       DateTimeOffset now)
+    {
+        var item = _items.FirstOrDefault(i => i.VariantId == variantId);
+
+        if (item == null)
+            return Fail(CartItemErrors.NotFound());
+
+        if (!item.TryRestore(reason, now))
+            return Ok();
+
+        UpdatedAt = now;
+
+        IncreaseVersion();
+
+        RaiseDomainEvent(new CartItemRestoredDomainEvent(BuyerId));
 
         return Ok();
     }
@@ -241,9 +297,7 @@ public sealed class Cart : AggregateRoot
 
         IncreaseVersion();
 
-        RaiseDomainEvent(new CartItemsRestoredDomainEvent(
-            Id,
-            Version));
+        RaiseDomainEvent(new CartItemsRestoredDomainEvent(BuyerId));
 
         return Ok();
     }

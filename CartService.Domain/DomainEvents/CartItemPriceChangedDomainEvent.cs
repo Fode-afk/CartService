@@ -2,6 +2,4 @@
 
 namespace CartService.Domain.DomainEvents;
 
-public sealed record CartItemPriceChangedDomainEvent(
-    Guid CartId,
-    long Version) : IDomainEvent;
+public sealed record CartItemPriceChangedDomainEvent(Guid BuyerId) : IDomainEvent;

@@ -1,4 +1,4 @@
-﻿using CatalogService.Application.Features.IntegrationEventHandlers.ProductVariantPriceSnapshot.DeleteProductVariantPriceSnapshot;
+﻿using CartService.Application.Features.IntegrationEventHandlers.ProductVariantPriceSnapshot.DeleteProductVariantPriceSnapshot;
 using MassTransit;
 using MediatR;
 using migApp.Shared.Messaging.IntegrationEvents.Pricing;

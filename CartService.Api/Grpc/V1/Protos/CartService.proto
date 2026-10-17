@@ -1,0 +1,79 @@
+syntax = "proto3";
+
+package cart.v1;
+
+option csharp_namespace = "CartService.Api.Grpc.V1.Protos";
+
+service CartService {
+	rpc AddCartItem(AddCartItemRequest) returns (CartResponse);
+
+    rpc ChangeCartItemQuantity(ChangeCartItemQuantityRequest) returns (CartResponse);
+
+    rpc ClearCart(ClearCartRequest) returns (CartResponse);
+
+    rpc RemoveCartItem(RemoveCartItemRequest) returns (CartResponse);
+    rpc RemoveUnavailableCartItems(RemoveUnavailableCartItemsRequest) returns (CartResponse);
+
+    rpc GetCart(GetCartRequest) returns (CartResponse);
+}
+
+message AddCartItemRequest {
+    string buyer_id = 1;
+    string variant_id = 2;
+    int32 quantity = 3;
+    string currency_code = 4;
+}
+
+message ChangeCartItemQuantityRequest {
+    string buyer_id = 1;
+    string variant_id = 2;
+    int32 quantity = 3;
+    string currency_code = 4;
+}
+
+message ClearCartRequest {
+    string buyer_id = 1;
+    string currency_code = 2;
+}
+
+message RemoveCartItemRequest {
+    string buyer_id = 1;
+    string variant_id = 2;
+    string currency_code = 3;
+}
+
+message RemoveUnavailableCartItemsRequest {
+    string buyer_id = 1;
+    string currency_code = 2;
+}
+
+message GetCartRequest {
+    string buyer_id = 1;
+    string currency_code = 2;
+}
+
+message CartResponse {
+    string cart_id = 1;
+    repeated CartItemResponse items = 2;
+    CartTotalsResponse totals = 3;
+}
+
+message CartItemResponse {
+    string variant_id = 1;
+    string product_id = 2;
+    string vendor_id = 3;
+    int32 quantity = 4;
+    int64 unit_price_minor = 5;
+    int64 line_total_minor = 6;
+    int64 price_when_added_minor = 7;
+    bool is_price_changed = 8;
+    bool is_available = 9;
+    repeated string suspension_reasons = 10;
+}
+
+message CartTotalsResponse {
+    int32 distinct_items = 1;
+    int32 total_quantity = 2;
+    int64 subtotal_minor = 3;
+    string currency = 4;
+}

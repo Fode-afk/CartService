@@ -7,9 +7,13 @@
   </PropertyGroup>
 
   <ItemGroup>
-	<PackageReference Include="Hangfire.Core" Version="1.8.23" />
-	<PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.12" />
+	<PackageReference Include="FluentValidation" Version="12.2.0" />
+	<PackageReference Include="FluentValidation.DependencyInjectionExtensions" Version="12.2.0" />
+	<PackageReference Include="Hangfire.Core" Version="1.8.25" />
+	<PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.13" />
 	<PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
+	<PackageReference Include="Scrutor" Version="7.0.0" />
+	<PackageReference Include="ZiggyCreatures.FusionCache" Version="2.9.0" />
   </ItemGroup>
 
   <ItemGroup>

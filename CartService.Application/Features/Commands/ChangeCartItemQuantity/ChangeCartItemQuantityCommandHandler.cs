@@ -26,9 +26,17 @@ public sealed class ChangeCartItemQuantityCommandHandler(
         if (quantityResult.IsFailure)
             return quantityResult;
 
+        var productVariantInventorySnapshot = await context.ProductVariantInventorySnapshots
+            .AsNoTracking()
+            .FirstOrDefaultAsync(p => p.ProductVariantId == request.VariantId, cancellationToken);
+
+        if (productVariantInventorySnapshot == null)
+            return Fail(ProductVariantInventorySnapshotErrors.NotFound());
+
         var result = cart.ChangeQuantity(
             request.VariantId,
-            quantityResult.Value, 
+            quantityResult.Value,
+            productVariantInventorySnapshot.AvailableQuantity,
             timeProvider.GetUtcNow());
 
         if (result.IsFailure)

@@ -2,6 +2,4 @@
 
 namespace CartService.Domain.DomainEvents;
 
-public sealed record CartItemsSuspendedDomainEvent(
-    Guid CartId,
-    long Version) : IDomainEvent;
+public sealed record CartItemsSuspendedDomainEvent(Guid BuyerId) : IDomainEvent;

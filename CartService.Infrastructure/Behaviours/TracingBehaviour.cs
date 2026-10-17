@@ -11,7 +11,7 @@ public sealed class TracingBehaviour<TRequest, TResponse>(
     where TRequest : notnull
 {
     public static readonly ActivitySource Source =
-        new("CatalogService");
+        new("CartService");
 
     public async Task<TResponse> Handle(
         TRequest request,
