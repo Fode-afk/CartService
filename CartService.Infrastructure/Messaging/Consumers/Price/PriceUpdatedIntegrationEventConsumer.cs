@@ -5,11 +5,11 @@ using migApp.Shared.Messaging.IntegrationEvents.Pricing;
 
 namespace CartService.Infrastructure.Messaging.Consumers.Price;
 
-//public sealed class PriceUpdatedIntegrationEventConsumer(IMediator mediator) : IConsumer<PriceUpdatedIntegrationEvent>
-//{
-//    public async Task Consume(ConsumeContext<PriceUpdatedIntegrationEvent> context) =>
-//        await mediator.Send(new UpdateProductVariantPriceSnapshotCommand(
-//            context.Message.ProductVariantId,
-//            context.Message.UnitPriceMinor,
-//            context.Message.Version), context.CancellationToken);
-//}
+public sealed class PriceUpdatedIntegrationEventConsumer(IMediator mediator) : IConsumer<PriceUpdatedIntegrationEvent>
+{
+    public async Task Consume(ConsumeContext<PriceUpdatedIntegrationEvent> context) =>
+        await mediator.Send(new UpdateProductVariantPriceSnapshotCommand(
+            context.Message.ProductVariantId,
+            context.Message.CurrentPriceMinor,
+            context.Message.Version), context.CancellationToken);
+}

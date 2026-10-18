@@ -9,7 +9,10 @@ internal sealed class CurrencyServiceClient(
     Proto.CurrencyService.CurrencyServiceClient client,
     IAsyncPolicy circuitBreakerPolicy) : ICurrencyService
 {
-    public async Task<decimal?> GetExchangeRateAsync(string sourceCurrency, string targetCurrency, CancellationToken cancellationToken = default)
+    public async Task<decimal?> GetExchangeRateAsync(
+        string sourceCurrency,
+        string targetCurrency,
+        CancellationToken cancellationToken = default)
     {
         var result = await circuitBreakerPolicy.ExecuteAsync(async ct =>
             await client.GetExchangeRateAsync(

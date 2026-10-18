@@ -54,6 +54,9 @@ public sealed class CartItem : Entity
         Money unitPrice,
         DateTimeOffset now)
     {
+        if (quantity.Value == 0)
+            return Fail<CartItem>(CartItemErrors.InvalidQuantity());
+
         if (quantity > availableQuantity)
             return Fail<CartItem>(CartItemErrors.MaxQuantityReached(availableQuantity));
 
@@ -77,6 +80,9 @@ public sealed class CartItem : Entity
         if (!IsAvailable)
             return Fail(CartItemErrors.Unavailable());
 
+        if (delta.Value == 0)
+            return Fail<CartItem>(CartItemErrors.InvalidQuantity());
+
         if ((Quantity + delta) > availableQuantity)
             return Fail(CartItemErrors.MaxQuantityReached(availableQuantity));
 
@@ -98,6 +104,9 @@ public sealed class CartItem : Entity
 
         if (!IsAvailable)
             return Fail(CartItemErrors.Unavailable());
+
+        if (quantity.Value == 0)
+            return Fail<CartItem>(CartItemErrors.InvalidQuantity());
 
         if (quantity > availableQuantity)
             return Fail(CartItemErrors.MaxQuantityReached(availableQuantity));

@@ -17,4 +17,5 @@ public static class CartErrorCodes
 {
     public const string DistinctItemsLimitReached = "Cart.DistinctItemsLimitReached";
     public const string NotFound = "Cart.NotFound";
+    public const string InvalidId = "Cart.InvalidId";
 }

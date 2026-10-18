@@ -15,7 +15,10 @@ internal sealed class ExchangeRateService(IFusionCache cache, ICurrencyService c
         AllowStaleOnReadOnly = true
     };
 
-    public async Task<decimal?> GetExchangeRateAsync(Currency sourceCurrency, Currency targetCurrency, CancellationToken cancellationToken = default)
+    public async Task<decimal?> GetExchangeRateAsync(
+        Currency sourceCurrency, 
+        Currency targetCurrency,
+        CancellationToken cancellationToken = default)
     {
         if (sourceCurrency == targetCurrency)
             return 1m;
