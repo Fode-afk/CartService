@@ -2,7 +2,6 @@
 using CartService.Application.Interfaces.Jobs;
 using CartService.Application.Interfaces.Metrics;
 using CartService.Application.Interfaces.Services;
-using CartService.Domain.Primitives;
 using CartService.Infrastructure.Behaviours;
 using CartService.Infrastructure.Data;
 using CartService.Infrastructure.DependencyInjection;
@@ -26,6 +25,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using migApp.Shared.Behaviours;
 using migApp.Shared.Caching;
+using migApp.Shared.Domain.Primitives;
 using migApp.Shared.Grpc;
 using migApp.Shared.Utils;
 using OpenTelemetry;

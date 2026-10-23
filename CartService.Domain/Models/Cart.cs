@@ -1,7 +1,7 @@
 ﻿using CartService.Domain.DomainEvents;
 using CartService.Domain.Errors;
-using CartService.Domain.Primitives;
 using CartService.Domain.ValueObjects;
+using migApp.Shared.Domain.Primitives;
 using migApp.Shared.Domain.ValueObjects;
 using migApp.Shared.Results;
 using static migApp.Shared.Results.ResultFactory;

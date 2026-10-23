@@ -1,7 +1,7 @@
 ﻿using CartService.Application.DependencyInjection;
-using CartService.Domain.Primitives;
 using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
+using migApp.Shared.Domain.Primitives;
 
 namespace CartService.Application.DependencyInjection;
 

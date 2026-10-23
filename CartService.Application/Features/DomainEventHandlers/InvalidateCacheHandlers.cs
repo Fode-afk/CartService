@@ -1,6 +1,6 @@
 ﻿using CartService.Application.Caching;
 using CartService.Domain.DomainEvents;
-using CartService.Domain.Primitives;
+using migApp.Shared.Domain.Primitives;
 using ZiggyCreatures.Caching.Fusion;
 
 namespace CartService.Application.Features.DomainEventHandlers;

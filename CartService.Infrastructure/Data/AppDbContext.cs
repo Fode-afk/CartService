@@ -1,12 +1,12 @@
 ﻿using CartService.Application.Interfaces.Data;
 using CartService.Domain.Models;
-using CartService.Domain.Primitives;
 using CartService.Domain.Snapshots;
 using CartService.Infrastructure.DomainEvents;
 using MassTransit;
 using MassTransit.EntityFrameworkCoreIntegration;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
+using migApp.Shared.Domain.Primitives;
 
 namespace CartService.Infrastructure.Data;
 

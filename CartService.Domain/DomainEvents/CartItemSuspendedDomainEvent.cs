@@ -1,4 +1,4 @@
-﻿using CartService.Domain.Primitives;
+﻿using migApp.Shared.Domain.Primitives;
 
 namespace CartService.Domain.DomainEvents;
 
