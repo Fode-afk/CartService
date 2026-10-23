@@ -114,11 +114,11 @@ namespace CartService.Infrastructure.Data.Migrations
                 columns: table => new
                 {
                     ProductVariantId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    ProductId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    UnitPrice = table.Column<decimal>(type: "decimal(18,4)", precision: 18, scale: 4, nullable: false),
                     UpdatedAt = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false),
                     Version = table.Column<long>(type: "bigint", nullable: false),
-                    RowVersion = table.Column<byte[]>(type: "rowversion", rowVersion: true, nullable: true)
+                    RowVersion = table.Column<byte[]>(type: "rowversion", rowVersion: true, nullable: true),
+                    UnitPrice_Amount = table.Column<decimal>(type: "decimal(18,2)", precision: 18, scale: 2, nullable: false),
+                    UnitPrice_Currency = table.Column<string>(type: "nvarchar(3)", maxLength: 3, nullable: true)
                 },
                 constraints: table =>
                 {
@@ -149,10 +149,12 @@ namespace CartService.Infrastructure.Data.Migrations
                     ProductId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     VendorId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     Quantity = table.Column<int>(type: "int", nullable: false),
-                    UnitPrice = table.Column<decimal>(type: "decimal(18,4)", precision: 18, scale: 4, nullable: false),
-                    PriceWhenAdded = table.Column<decimal>(type: "decimal(18,4)", precision: 18, scale: 4, nullable: false),
                     UpdatedAt = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: true),
                     CartId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    PriceWhenAdded_Amount = table.Column<decimal>(type: "decimal(18,2)", precision: 18, scale: 2, nullable: false),
+                    PriceWhenAdded_Currency = table.Column<string>(type: "nvarchar(3)", maxLength: 3, nullable: true),
+                    UnitPrice_Amount = table.Column<decimal>(type: "decimal(18,2)", precision: 18, scale: 2, nullable: false),
+                    UnitPrice_Currency = table.Column<string>(type: "nvarchar(3)", maxLength: 3, nullable: true),
                     RowVersion = table.Column<byte[]>(type: "varbinary(max)", nullable: false),
                     Version = table.Column<long>(type: "bigint", nullable: false)
                 },
@@ -316,12 +318,6 @@ namespace CartService.Infrastructure.Data.Migrations
                 name: "IX_ProductSuspensionReasons_ProductId",
                 schema: "cart_write",
                 table: "ProductSuspensionReasons",
-                column: "ProductId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_ProductVariantPriceSnapshots_ProductId",
-                schema: "cart_write",
-                table: "ProductVariantPriceSnapshots",
                 column: "ProductId");
 
             migrationBuilder.CreateIndex(

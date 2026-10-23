@@ -20,17 +20,31 @@ public sealed class CartItemConfiguration : IEntityTypeConfiguration<CartItem>
                 quantity => quantity.Value,
                 value => Quantity.Create(value).Value);
 
-        builder.Property(x => x.UnitPrice)
-            .HasPrecision(18, 4)
-            .HasConversion(
-                amount => amount.Amount,
-                value => Money.Create(value, Currency.USD).Value);
+        builder.ComplexProperty(e => e.UnitPrice, money =>
+        {
+            money.Property(m => m.Amount)
+                .HasPrecision(18, 2)
+                .IsRequired();
 
-        builder.Property(x => x.PriceWhenAdded)
-            .HasPrecision(18, 4)
-            .HasConversion(
-                amount => amount.Amount,
-                value => Money.Create(value, Currency.USD).Value);
+            money.Property(p => p.Currency)
+                .HasMaxLength(Currency.CodeLength)
+                .HasConversion(
+                    currency => currency.Code,
+                    value => Currency.Create(value).Value);
+        });
+
+        builder.ComplexProperty(e => e.PriceWhenAdded, money =>
+        {
+            money.Property(m => m.Amount)
+                .HasPrecision(18, 2)
+                .IsRequired();
+
+            money.Property(p => p.Currency)
+                .HasMaxLength(Currency.CodeLength)
+                .HasConversion(
+                    currency => currency.Code,
+                    value => Currency.Create(value).Value);
+        });
 
         builder.OwnsMany(p => p.SuspensionReasons, s =>
         {

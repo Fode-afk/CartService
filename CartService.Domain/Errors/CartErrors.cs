@@ -11,11 +11,16 @@ public static class CartErrors
     public static Error NotFound() =>
         Error.NotFound(CartErrorCodes.NotFound,
             "Cart not found.");
+
+    public static Error ExchangeRateUnavailable() =>
+        Error.Internal(CartErrorCodes.ExchangeRateUnavailable,
+            "Exchange rate unavailable.");
 }
 
 public static class CartErrorCodes
 {
     public const string DistinctItemsLimitReached = "Cart.DistinctItemsLimitReached";
     public const string NotFound = "Cart.NotFound";
+    public const string ExchangeRateUnavailable = "Cart.ExchangeRateUnavailable";
     public const string InvalidId = "Cart.InvalidId";
 }

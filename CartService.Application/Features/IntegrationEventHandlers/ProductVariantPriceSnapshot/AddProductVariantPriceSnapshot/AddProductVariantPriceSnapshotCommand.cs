@@ -4,6 +4,6 @@ namespace CartService.Application.Features.IntegrationEventHandlers.ProductVaria
 
 public sealed record AddProductVariantPriceSnapshotCommand(
     Guid ProductVariantId, 
-    Guid ProductId,
-    long UnitPriceInUsdMinor,
+    long UnitPriceMinor,
+    string Currency,
     long Version) : IRequest;

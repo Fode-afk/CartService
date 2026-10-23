@@ -13,13 +13,19 @@ internal sealed class ProductVariantPriceSnapshotConfiguration : IEntityTypeConf
 
         builder.HasKey(x => x.ProductVariantId);
 
-        builder.HasIndex(x => x.ProductId);
 
-        builder.Property(x => x.UnitPrice)
-            .HasPrecision(18, 4)
-            .HasConversion(
-                amount => amount.Amount,
-                value => Money.Create(value, Currency.USD).Value);
+        builder.ComplexProperty(e => e.UnitPrice, money =>
+        {
+            money.Property(m => m.Amount)
+                .HasPrecision(18, 2)
+                .IsRequired();
+
+            money.Property(p => p.Currency)
+                .HasMaxLength(Currency.CodeLength)
+                .HasConversion(
+                    currency => currency.Code,
+                    value => Currency.Create(value).Value);
+        });
 
         builder.Property<byte[]>("RowVersion")
            .IsRowVersion()

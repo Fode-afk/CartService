@@ -18,7 +18,15 @@ public sealed class AddProductVariantPriceSnapshotCommandHandler(
         if (exists)
             return;
 
-        var unitPriceResult = Money.FromMinor(request.UnitPriceInUsdMinor, Currency.USD);
+        var currencyResult = Currency.Create(request.Currency);
+
+        if (currencyResult.IsFailure)
+        {
+            // log
+            return;
+        }
+
+        var unitPriceResult = Money.FromMinor(request.UnitPriceMinor, currencyResult.Value);
 
         if (unitPriceResult.IsFailure)
         {
@@ -27,7 +35,7 @@ public sealed class AddProductVariantPriceSnapshotCommandHandler(
                 nameof(AddProductVariantPriceSnapshotCommand),
                 request.ProductVariantId,
                 request.Version,
-                request.UnitPriceInUsdMinor,
+                request.UnitPriceMinor,
                 unitPriceResult.Error);
             return;
         }
@@ -36,7 +44,6 @@ public sealed class AddProductVariantPriceSnapshotCommandHandler(
             new Domain.Snapshots.ProductVariantPriceSnapshot
             {
                 ProductVariantId = request.ProductVariantId,
-                ProductId = request.ProductId,
                 UnitPrice = unitPriceResult.Value,
                 UpdatedAt = timeProvider.GetUtcNow(),
                 Version = request.Version

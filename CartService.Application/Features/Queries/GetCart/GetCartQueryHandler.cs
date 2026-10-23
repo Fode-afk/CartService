@@ -33,25 +33,41 @@ public sealed class GetCartQueryHandler(
             async ct => await context.Carts
                 .AsNoTracking()
                 .Include(c => c.Items)
-                .FirstOrDefaultAsync(c => c.BuyerId == request.BuyerId, cancellationToken),
+                .FirstOrDefaultAsync(c => c.BuyerId == request.BuyerId, ct),
             token: cancellationToken);
 
         if (cart is null)
             return Fail<CartDto>(CartErrors.NotFound());
 
-        var rate = await exchangeRateService.GetExchangeRateAsync(
-            Currency.USD,
-            targetCurrency, cancellationToken);
+        var sourceCurrencies = cart.Items
+            .Select(i => i.UnitPrice.Currency)
+            .Where(c => c != targetCurrency)
+            .Distinct()
+            .ToList();
 
-        if (rate is null)
+        var rates = new Dictionary<Currency, decimal>(sourceCurrencies.Count);
+
+        foreach (var source in sourceCurrencies)
         {
-            logger.LogWarning(
-                "Exchange rate USD→{Currency} unavailable, returning cart in USD for buyer {BuyerId}",
-                targetCurrency.Code, request.BuyerId);
+            var rate = await exchangeRateService.GetExchangeRateAsync(
+                source,
+                targetCurrency,
+                cancellationToken);
 
-            return Ok(cart.ToDto(1m, Currency.USD));
+            if (rate is null)
+            {
+                logger.LogWarning(
+                    "Exchange rate {Source}→{Target} unavailable, cannot build cart for buyer {BuyerId}",
+                    source.Code,
+                    targetCurrency.Code,
+                    request.BuyerId);
+
+                return Fail<CartDto>(CartErrors.ExchangeRateUnavailable());
+            }
+
+            rates.Add(source, rate.Value);
         }
 
-        return Ok(cart.ToDto(rate.Value, targetCurrency));
+        return Ok(cart.ToDto(rates, targetCurrency));
     }
 }

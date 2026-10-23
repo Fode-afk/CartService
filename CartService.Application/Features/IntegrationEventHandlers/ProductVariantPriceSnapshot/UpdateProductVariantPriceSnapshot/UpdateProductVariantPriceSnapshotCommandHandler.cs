@@ -34,7 +34,15 @@ public sealed class UpdateProductVariantPriceSnapshotCommandHandler(
             return;
         }
 
-        var unitPriceResult = Money.FromMinor(request.UnitPriceInUsdMinor, Currency.USD);
+        var currencyResult = Currency.Create(request.Currency);
+
+        if (currencyResult.IsFailure)
+        {
+            // log
+            return;
+        }
+
+        var unitPriceResult = Money.FromMinor(request.UnitPriceMinor, currencyResult.Value);
 
         if (unitPriceResult.IsFailure)
         {
@@ -43,7 +51,7 @@ public sealed class UpdateProductVariantPriceSnapshotCommandHandler(
                 nameof(UpdateProductVariantPriceSnapshotCommand),
                 request.ProductVariantId,
                 request.Version,
-                request.UnitPriceInUsdMinor,
+                request.UnitPriceMinor,
                 unitPriceResult.Error);
             return;
         }

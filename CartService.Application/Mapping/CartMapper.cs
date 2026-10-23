@@ -1,5 +1,6 @@
 ﻿using CartService.Application.Dtos;
 using CartService.Domain.Models;
+using migApp.Shared.Domain.Extensions;
 using migApp.Shared.Domain.ValueObjects;
 
 namespace CartService.Application.Mapping;
@@ -8,7 +9,7 @@ internal static class CartMapper
 {
     public static CartDto ToDto(
         this Cart cart,
-        decimal exchangeRate,
+        IReadOnlyDictionary<Currency, decimal> rates,
         Currency targetCurrency)
     {
         var items = new List<CartItemDto>(cart.Items.Count);
@@ -16,31 +17,25 @@ internal static class CartMapper
 
         foreach (var item in cart.Items)
         {
-            var unit = ConvertUsdToTargetMinor(
-                item.UnitPrice.ToMinor(),
-                targetCurrency,
-                exchangeRate);
-            var added = ConvertUsdToTargetMinor(
-                item.PriceWhenAdded.ToMinor(),
-                targetCurrency,
-                exchangeRate);
+            var unit = ToTargetMinor(item.UnitPrice, targetCurrency, rates);
+            var added = ToTargetMinor(item.PriceWhenAdded, targetCurrency, rates);
 
-            var line = unit * item.Quantity.Value;
+            var line = checked(unit * item.Quantity.Value);
 
-            if (item.IsAvailable) 
-                subtotal += line;
+            if (item.IsAvailable)
+                subtotal = checked(subtotal + line);
 
             items.Add(new CartItemDto(
                 item.VariantId,
                 item.ProductId,
                 item.VendorId,
                 item.Quantity.Value,
-                unit, 
+                unit,
                 line,
                 added,
                 item.IsPriceChangedSinceAdded,
                 item.IsAvailable,
-                [..item.SuspensionReasons.Select(r => r.Reason.ToString())]));
+                [.. item.SuspensionReasons.Select(r => r.Reason.ToString())]));
         }
 
         var available = items.Where(x => x.IsAvailable).ToList();
@@ -55,20 +50,18 @@ internal static class CartMapper
                 Currency: targetCurrency.Code));
     }
 
-    private static long ConvertUsdToTargetMinor(
-        long usdAmountMinor,
+    private static long ToTargetMinor(
+        Money amount,
         Currency targetCurrency,
-        decimal exchangeRate)
+        IReadOnlyDictionary<Currency, decimal> rates)
     {
-        if (targetCurrency == Currency.USD)
-            return usdAmountMinor;
+        if (amount.Currency == targetCurrency)
+            return amount.ToMinor();
 
-        var usdMajor = usdAmountMinor / Currency.USD.MinorFactor;
-        var targetMinor = Math.Round(
-            usdMajor * exchangeRate * targetCurrency.MinorFactor,
-            0,
-            MidpointRounding.AwayFromZero);
+        if (!rates.TryGetValue(amount.Currency, out var rate))
+            throw new InvalidOperationException(
+                $"Exchange rate {amount.Currency.Code} -> {targetCurrency.Code} is missing.");
 
-        return decimal.ToInt64(targetMinor);
+        return amount.ConvertToMinor(targetCurrency, rate);
     }
 }

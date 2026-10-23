@@ -11,5 +11,6 @@ public sealed class PriceUpdatedIntegrationEventConsumer(IMediator mediator) : I
         await mediator.Send(new UpdateProductVariantPriceSnapshotCommand(
             context.Message.ProductVariantId,
             context.Message.CurrentPriceMinor,
+            context.Message.Currency,
             context.Message.Version), context.CancellationToken);
 }
