@@ -65,10 +65,8 @@ message CartItemResponse {
     int32 quantity = 4;
     int64 unit_price_minor = 5;
     int64 line_total_minor = 6;
-    int64 price_when_added_minor = 7;
-    bool is_price_changed = 8;
-    bool is_available = 9;
-    repeated string suspension_reasons = 10;
+    bool is_available = 7;
+    repeated string suspension_reasons = 8;
 }
 
 message CartTotalsResponse {

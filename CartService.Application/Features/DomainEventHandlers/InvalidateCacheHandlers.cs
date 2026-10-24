@@ -11,7 +11,6 @@ public sealed class InvalidateCacheHandlers(IFusionCache cache) :
     IPostCommitDomainEventHandler<CartItemRemovedDomainEvent>,
     IPostCommitDomainEventHandler<CartClearedDomainEvent>,
     IPostCommitDomainEventHandler<CartItemsRemovedUnavailableDomainEvent>,
-    IPostCommitDomainEventHandler<CartItemPriceChangedDomainEvent>,
     IPostCommitDomainEventHandler<CartItemSuspendedDomainEvent>,
     IPostCommitDomainEventHandler<CartItemsSuspendedDomainEvent>,
     IPostCommitDomainEventHandler<CartItemRestoredDomainEvent>,
@@ -31,10 +30,6 @@ public sealed class InvalidateCacheHandlers(IFusionCache cache) :
 
     public async Task Handle(CartItemsRemovedUnavailableDomainEvent notification, CancellationToken cancellationToken) =>
         await cache.RemoveAsync(CacheKeys.CartByBuyerId(notification.BuyerId), token: cancellationToken);
-
-    public async Task Handle(CartItemPriceChangedDomainEvent notification, CancellationToken cancellationToken) =>
-        await cache.RemoveAsync(CacheKeys.CartByBuyerId(notification.BuyerId), token: cancellationToken);
-
     public async Task Handle(CartItemSuspendedDomainEvent notification, CancellationToken cancellationToken) =>
         await cache.RemoveAsync(CacheKeys.CartByBuyerId(notification.BuyerId), token: cancellationToken);
 

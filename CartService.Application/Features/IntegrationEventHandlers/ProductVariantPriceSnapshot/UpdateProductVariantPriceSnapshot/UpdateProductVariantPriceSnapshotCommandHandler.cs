@@ -1,8 +1,6 @@
 ﻿using CartService.Application.Interfaces.Data;
-using CartService.Application.Interfaces.Jobs;
 using CartService.Application.Interfaces.Metrics;
 using CartService.Domain.Exceptions;
-using Hangfire;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -12,7 +10,6 @@ namespace CartService.Application.Features.IntegrationEventHandlers.ProductVaria
 
 public sealed class UpdateProductVariantPriceSnapshotCommandHandler(
     IAppDbContext context,
-    IBackgroundJobClient backgroundJobClient,
     ICartMetrics metrics,
     ILogger<UpdateProductVariantPriceSnapshotCommandHandler> logger,
     TimeProvider timeProvider) : IRequestHandler<UpdateProductVariantPriceSnapshotCommand>
@@ -20,12 +17,12 @@ public sealed class UpdateProductVariantPriceSnapshotCommandHandler(
     public async Task Handle(UpdateProductVariantPriceSnapshotCommand request, CancellationToken cancellationToken)
     {
         var snapshot = await context.ProductVariantPriceSnapshots
-            .FirstOrDefaultAsync(p => p.ProductVariantId == request.ProductVariantId, cancellationToken);
+            .FirstOrDefaultAsync(p => p.PriceId == request.PriceId, cancellationToken);
 
         if (snapshot == null)
         {
             metrics.RecordSnapshotNotFound("ProductVariant");
-            throw new SnapshotNotFoundException("ProductVariant", request.ProductVariantId);
+            throw new SnapshotNotFoundException("ProductVariant", request.PriceId);
         }
 
         if (request.Version <= snapshot.Version)
@@ -41,38 +38,18 @@ public sealed class UpdateProductVariantPriceSnapshotCommandHandler(
             logger.LogWarning(
                "Invalid currency in {Command}: ProductVariantId={ProductVariantId}, Version={Version}, Currency={Currency}, Error={@Error}",
                nameof(UpdateProductVariantPriceSnapshotCommand),
-               request.ProductVariantId,
+               request.PriceId,
                request.Version,
                request.Currency,
                currencyResult.Error);
             return;
         }
 
-        var unitPriceResult = Money.FromMinor(request.UnitPriceMinor, currencyResult.Value);
-
-        if (unitPriceResult.IsFailure)
-        {
-            logger.LogWarning(
-                "Invalid price in {Command}: ProductVariantId={ProductVariantId}, Version={Version}, UnitPriceInUsdMinor={UnitPriceInUsdMinor}, Error={@Error}",
-                nameof(UpdateProductVariantPriceSnapshotCommand),
-                request.ProductVariantId,
-                request.Version,
-                request.UnitPriceMinor,
-                unitPriceResult.Error);
-            return;
-        }
-
-        await using var transaction = await context.BeginTransactionAsync(cancellationToken);
-
-        snapshot.UnitPrice = unitPriceResult.Value;
+        snapshot.AmountMinor = request.UnitPriceMinor;
+        snapshot.Currency = currencyResult.Value;
         snapshot.Version = request.Version;
         snapshot.UpdatedAt = timeProvider.GetUtcNow();
 
         await context.SaveChangesAsync(cancellationToken);
-
-        backgroundJobClient.Enqueue<ISyncCartItemPricesJob>(
-           job => job.Execute(request.ProductVariantId, unitPriceResult.Value, CancellationToken.None));
-
-        await transaction.CommitAsync(cancellationToken);
     }
 }

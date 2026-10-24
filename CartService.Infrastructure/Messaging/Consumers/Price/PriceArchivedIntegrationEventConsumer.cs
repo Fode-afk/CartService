@@ -8,5 +8,5 @@ namespace CartService.Infrastructure.Messaging.Consumers.Price;
 public sealed class PriceArchivedIntegrationEventConsumer(IMediator mediator) : IConsumer<PriceArchivedIntegrationEvent>
 {
     public async Task Consume(ConsumeContext<PriceArchivedIntegrationEvent> context) =>
-        await mediator.Send(new DeleteProductVariantPriceSnapshotCommand(context.Message.ProductVariantId), context.CancellationToken);
+        await mediator.Send(new DeleteProductVariantPriceSnapshotCommand(context.Message.PriceId), context.CancellationToken);
 }

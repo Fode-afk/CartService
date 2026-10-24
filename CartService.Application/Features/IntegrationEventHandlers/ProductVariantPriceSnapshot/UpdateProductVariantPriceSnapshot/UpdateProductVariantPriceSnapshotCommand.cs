@@ -3,7 +3,7 @@
 namespace CartService.Application.Features.IntegrationEventHandlers.ProductVariantPriceSnapshot.UpdateProductVariantPriceSnapshot;
 
 public sealed record UpdateProductVariantPriceSnapshotCommand(
-    Guid ProductVariantId,
+    Guid PriceId,
     long UnitPriceMinor,
     string Currency,
     long Version) : IRequest;

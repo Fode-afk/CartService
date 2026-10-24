@@ -1,7 +1,6 @@
 ﻿using CartService.Domain.Errors;
 using CartService.Domain.ValueObjects;
 using migApp.Shared.Domain.Primitives;
-using migApp.Shared.Domain.ValueObjects;
 using migApp.Shared.Results;
 using static migApp.Shared.Results.ResultFactory;
 
@@ -15,15 +14,13 @@ public sealed class CartItem : Entity
         Guid variantId,
         Guid productId,
         Guid vendorId, 
-        Quantity quantity,
-        Money unitPrice, 
+        Quantity quantity, 
         DateTimeOffset now) : base(id)
     {
         VariantId = variantId;
         ProductId = productId;
         VendorId = vendorId;
         Quantity = quantity;
-        UnitPrice = PriceWhenAdded = unitPrice;
         AddedAt = now;
     }
 
@@ -32,8 +29,6 @@ public sealed class CartItem : Entity
     public Guid VendorId { get; }
 
     public Quantity Quantity { get; private set; }
-    public Money UnitPrice { get; private set; }
-    public Money PriceWhenAdded { get; private set; }
 
     private readonly HashSet<CartItemSuspensionReason> _suspensionReasons = [];
     public IReadOnlyCollection<CartItemSuspensionReason> SuspensionReasons => _suspensionReasons;
@@ -42,8 +37,8 @@ public sealed class CartItem : Entity
     public DateTimeOffset AddedAt { get; }
     public DateTimeOffset? UpdatedAt { get; private set; }
 
-    public Money LineTotal => UnitPrice * Quantity.Value;
-    public bool IsPriceChangedSinceAdded => UnitPrice != PriceWhenAdded;
+    //public Money LineTotal => UnitPrice * Quantity.Value;
+    //public bool IsPriceChangedSinceAdded => UnitPrice != PriceWhenAdded;
 
     internal static IResult<CartItem> Create(
         Guid variantId,
@@ -51,7 +46,6 @@ public sealed class CartItem : Entity
         Guid vendorId,
         Quantity quantity,
         Quantity availableQuantity,
-        Money unitPrice,
         DateTimeOffset now)
     {
         if (quantity.Value == 0)
@@ -67,14 +61,12 @@ public sealed class CartItem : Entity
                 productId,
                 vendorId,
                 quantity,
-                unitPrice,
                 now));
     }
 
     internal IResult Increase(
         Quantity delta,
         Quantity availableQuantity,
-        Money currentPrice,
         DateTimeOffset now)
     {
         if (!IsAvailable)
@@ -87,8 +79,6 @@ public sealed class CartItem : Entity
             return Fail(CartItemErrors.MaxQuantityReached(availableQuantity));
 
         Quantity = Quantity + delta;
-        PriceWhenAdded = UnitPrice;
-        UnitPrice = currentPrice;
         UpdatedAt = now;
 
         return Ok();
@@ -115,17 +105,6 @@ public sealed class CartItem : Entity
         UpdatedAt = now;
 
         return Ok();
-    }
-
-    internal bool SyncPrice(Money newPrice, DateTimeOffset now)
-    {
-        if (UnitPrice == newPrice)
-            return false;
-
-        UnitPrice = newPrice;
-        UpdatedAt = now;
-
-        return true;
     }
 
     internal bool Suspend(CartItemSuspensionReason reason, DateTimeOffset now)

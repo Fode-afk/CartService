@@ -39,8 +39,28 @@ public sealed class GetCartQueryHandler(
         if (cart is null)
             return Fail<CartDto>(CartErrors.NotFound());
 
-        var sourceCurrencies = cart.Items
-            .Select(i => i.UnitPrice.Currency)
+        var variantIds = cart.Items.Select(i => i.VariantId).Distinct().ToList();
+
+        var snapshots = await context.ProductVariantPriceSnapshots
+            .AsNoTracking()
+            .Where(p =>
+                variantIds.Contains(p.ProductVariantId) &&
+                (p.IsBase || p.Currency == targetCurrency))
+            .ToListAsync(cancellationToken);
+
+        var unitPrices = new Dictionary<Guid, Money>();
+
+        foreach (var group in snapshots.GroupBy(p => p.ProductVariantId))
+        {
+            var chosen = group.FirstOrDefault(p => !p.IsBase && p.UnitPrice.Currency == targetCurrency)
+                ?? group.FirstOrDefault(p => p.IsBase);
+
+            if (chosen is not null)
+                unitPrices[group.Key] = chosen.UnitPrice;
+        }
+
+        var sourceCurrencies = unitPrices.Values
+            .Select(m => m.Currency)
             .Where(c => c != targetCurrency)
             .Distinct()
             .ToList();
@@ -68,6 +88,6 @@ public sealed class GetCartQueryHandler(
             rates.Add(source, rate.Value);
         }
 
-        return Ok(cart.ToDto(rates, targetCurrency));
+        return Ok(cart.ToDto(unitPrices, rates, targetCurrency));
     }
 }

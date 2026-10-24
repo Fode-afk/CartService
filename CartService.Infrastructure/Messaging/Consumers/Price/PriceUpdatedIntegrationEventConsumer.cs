@@ -9,7 +9,7 @@ public sealed class PriceUpdatedIntegrationEventConsumer(IMediator mediator) : I
 {
     public async Task Consume(ConsumeContext<PriceUpdatedIntegrationEvent> context) =>
         await mediator.Send(new UpdateProductVariantPriceSnapshotCommand(
-            context.Message.ProductVariantId,
+            context.Message.PriceId,
             context.Message.CurrentPriceMinor,
             context.Message.Currency,
             context.Message.Version), context.CancellationToken);

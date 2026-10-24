@@ -1,10 +1,12 @@
 ﻿using CartService.Application.Interfaces.Data;
-using Microsoft.EntityFrameworkCore;
+using CartService.Domain.Errors;
+using CartService.Domain.Snapshots;
+using CartService.Domain.ValueObjects;
 using MediatR;
+using Microsoft.EntityFrameworkCore;
+using migApp.Shared.Domain.ValueObjects;
 using migApp.Shared.Results;
 using static migApp.Shared.Results.ResultFactory;
-using CartService.Domain.Errors;
-using CartService.Domain.ValueObjects;
 
 namespace CartService.Application.Features.Commands.AddCartItem;
 
@@ -35,11 +37,15 @@ public sealed class AddCartItemCommandHandler(
         if (productSnapshot == null || !productSnapshot.IsVisiblePublicly)
             return Fail(ProductSnapshotErrors.NotFound());
 
-        var productVariantPriceSnapshot = await context.ProductVariantPriceSnapshots
-            .AsNoTracking()
-            .FirstOrDefaultAsync(p => p.ProductVariantId == variantSnapshot.ProductVariantId, cancellationToken);
+        var currencyResult = Currency.Create(request.Currency);
 
-        if (productVariantPriceSnapshot == null)
+        if (currencyResult.IsFailure)
+            return currencyResult;
+
+        var hasProductVariantPriceSnapshot = await context.ProductVariantPriceSnapshots
+            .AnyAsync(p => p.ProductVariantId == request.VariantId && p.IsBase, cancellationToken);
+
+        if (!hasProductVariantPriceSnapshot)
             return Fail(ProductVariantPriceSnapshotErrors.NotFound());
 
         var quantityResult = Quantity.Create(request.Quantity);
@@ -60,7 +66,6 @@ public sealed class AddCartItemCommandHandler(
             productSnapshot.VendorId,
             quantityResult.Value,
             productVariantInventorySnapshot.AvailableQuantity,
-            productVariantPriceSnapshot.UnitPrice,
             timeProvider.GetUtcNow());
 
         if (result.IsFailure)

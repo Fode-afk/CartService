@@ -9,7 +9,7 @@ public sealed class DeleteProductVariantPriceSnapshotCommandHandler(IAppDbContex
     public async Task Handle(DeleteProductVariantPriceSnapshotCommand request, CancellationToken cancellationToken)
     {
         var snapshot = await context.ProductVariantPriceSnapshots
-           .FirstOrDefaultAsync(p => p.ProductVariantId == request.ProductVariantId, cancellationToken);
+           .FirstOrDefaultAsync(p => p.PriceId == request.PriceId, cancellationToken);
 
         if (snapshot is null)
             return;

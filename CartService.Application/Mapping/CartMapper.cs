@@ -9,6 +9,7 @@ internal static class CartMapper
 {
     public static CartDto ToDto(
         this Cart cart,
+        IReadOnlyDictionary<Guid, Money> unitPrices,
         IReadOnlyDictionary<Currency, decimal> rates,
         Currency targetCurrency)
     {
@@ -17,12 +18,15 @@ internal static class CartMapper
 
         foreach (var item in cart.Items)
         {
-            var unit = ToTargetMinor(item.UnitPrice, targetCurrency, rates);
-            var added = ToTargetMinor(item.PriceWhenAdded, targetCurrency, rates);
+            var hasPrice = unitPrices.TryGetValue(item.VariantId, out var price);
+
+            var unit = hasPrice ? ToTargetMinor(price!, targetCurrency, rates) : 0L;
 
             var line = checked(unit * item.Quantity.Value);
 
-            if (item.IsAvailable)
+            var isAvailable = item.IsAvailable && hasPrice;
+
+            if (isAvailable)
                 subtotal = checked(subtotal + line);
 
             items.Add(new CartItemDto(
@@ -32,9 +36,7 @@ internal static class CartMapper
                 item.Quantity.Value,
                 unit,
                 line,
-                added,
-                item.IsPriceChangedSinceAdded,
-                item.IsAvailable,
+                isAvailable,
                 [.. item.SuspensionReasons.Select(r => r.Reason.ToString())]));
         }
 

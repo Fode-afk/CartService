@@ -97,7 +97,6 @@ public static class InfrastructureExtensions
 
         services.AddHangfireServer();
         services.AddScoped<ISuspendProductCartItemsJob, SuspendProductCartItemsJob>();
-        services.AddScoped<ISyncCartItemPricesJob, SyncCartItemPricesJob>();
         services.AddScoped<ISuspendInventoryCartItemJob, SuspendInventoryCartItemJob>();
 
         return services;

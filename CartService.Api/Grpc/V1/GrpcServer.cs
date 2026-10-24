@@ -19,7 +19,8 @@ internal sealed class GrpcServer(IMediator mediator) : Protos.CartService.CartSe
         var result = await mediator.Send(new AddCartItemCommand(
             Guid.Parse(request.BuyerId),
             Guid.Parse(request.VariantId),
-            request.Quantity), context.CancellationToken);
+            request.Quantity,
+            request.CurrencyCode), context.CancellationToken);
 
         result.ThrowIfFailure();
 

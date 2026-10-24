@@ -1,5 +1,6 @@
 ﻿using CartService.Domain.Errors;
 using FluentValidation;
+using migApp.Shared.Domain.Errors;
 
 namespace CartService.Application.Features.Commands.AddCartItem;
 
@@ -15,5 +16,10 @@ public sealed class AddCartItemCommandValidator : AbstractValidator<AddCartItemC
 
         RuleFor(x => x.Quantity)
             .GreaterThan(0).WithErrorCode(CartItemErrorCodes.InvalidQuantity);
+
+        RuleFor(x => x.Currency)
+            .NotEmpty()
+            .Length(3)
+            .WithErrorCode(CurrencyErrorCodes.InvalidFormat);
     }
 }

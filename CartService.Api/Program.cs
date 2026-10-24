@@ -13,8 +13,8 @@ builder.Services.AddInfrastructure(builder.Configuration);
 
 var app = builder.Build();
 
-//await app.MigrateDatabaseAsync();
-//await app.SeedDatabaseAsync();
+await app.MigrateDatabaseAsync();
+await app.SeedDatabaseAsync();
 
 app.UseSerilogRequestLogging();
 

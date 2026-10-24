@@ -11,21 +11,21 @@ internal sealed class ProductVariantPriceSnapshotConfiguration : IEntityTypeConf
     {
         builder.ToTable("ProductVariantPriceSnapshots", Schemas.CartWrite);
 
-        builder.HasKey(x => x.ProductVariantId);
+        builder.HasKey(x => x.PriceId);
 
+        builder.HasIndex(x => new { x.ProductVariantId, x.Currency }).IsUnique();
+        builder.HasIndex(x => x.ProductVariantId)
+            .IsUnique()
+            .HasFilter("[IsBase] = 1");
 
-        builder.ComplexProperty(e => e.UnitPrice, money =>
-        {
-            money.Property(m => m.Amount)
-                .HasPrecision(18, 2)
-                .IsRequired();
+        builder.Property(x => x.Currency)
+            .HasMaxLength(Currency.CodeLength)
+            .IsRequired()
+            .HasConversion(
+                currency => currency.Code,
+                value => Currency.Create(value).Value);
 
-            money.Property(p => p.Currency)
-                .HasMaxLength(Currency.CodeLength)
-                .HasConversion(
-                    currency => currency.Code,
-                    value => Currency.Create(value).Value);
-        });
+        builder.Property(x => x.AmountMinor).IsRequired();
 
         builder.Property<byte[]>("RowVersion")
            .IsRowVersion()

@@ -34,8 +34,6 @@ internal static class CartGrpcMapper
             Quantity = item.Quantity,
             UnitPriceMinor = item.UnitPriceMinor,
             LineTotalMinor = item.LineTotalMinor,
-            PriceWhenAddedMinor = item.PriceWhenAddedMinor,
-            IsPriceChanged = item.IsPriceChanged,
             IsAvailable = item.IsAvailable
         };
 

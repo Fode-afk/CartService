@@ -7,7 +7,5 @@ public sealed record CartItemDto(
     int Quantity,
     long UnitPriceMinor,
     long LineTotalMinor,
-    long PriceWhenAddedMinor,
-    bool IsPriceChanged,
     bool IsAvailable,
     IReadOnlyList<string> SuspensionReasons);

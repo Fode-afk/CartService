@@ -14,7 +14,7 @@ public sealed class AddProductVariantPriceSnapshotCommandHandler(
     public async Task Handle(AddProductVariantPriceSnapshotCommand request, CancellationToken cancellationToken)
     {
         var exists = await context.ProductVariantPriceSnapshots
-            .AnyAsync(x => x.ProductVariantId == request.ProductVariantId, cancellationToken);
+            .AnyAsync(x => x.PriceId == request.PriceId, cancellationToken);
         if (exists)
             return;
 
@@ -31,26 +31,15 @@ public sealed class AddProductVariantPriceSnapshotCommandHandler(
                 currencyResult.Error);
             return;
         }
-
-        var unitPriceResult = Money.FromMinor(request.UnitPriceMinor, currencyResult.Value);
-
-        if (unitPriceResult.IsFailure)
-        {
-            logger.LogWarning(
-                "Invalid price in {Command}: ProductVariantId={ProductVariantId}, Version={Version}, UnitPriceInUsdMinor={UnitPriceInUsdMinor}, Error={@Error}",
-                nameof(AddProductVariantPriceSnapshotCommand),
-                request.ProductVariantId,
-                request.Version,
-                request.UnitPriceMinor,
-                unitPriceResult.Error);
-            return;
-        }
         
         context.ProductVariantPriceSnapshots.Add(
             new Domain.Snapshots.ProductVariantPriceSnapshot
             {
+                PriceId = request.PriceId,
                 ProductVariantId = request.ProductVariantId,
-                UnitPrice = unitPriceResult.Value,
+                IsBase = request.IsBase,
+                AmountMinor = request.UnitPriceMinor,
+                Currency = currencyResult.Value,
                 UpdatedAt = timeProvider.GetUtcNow(),
                 Version = request.Version
             });

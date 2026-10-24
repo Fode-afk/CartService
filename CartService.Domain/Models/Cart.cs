@@ -2,7 +2,6 @@
 using CartService.Domain.Errors;
 using CartService.Domain.ValueObjects;
 using migApp.Shared.Domain.Primitives;
-using migApp.Shared.Domain.ValueObjects;
 using migApp.Shared.Results;
 using static migApp.Shared.Results.ResultFactory;
 
@@ -31,10 +30,10 @@ public sealed class Cart : AggregateRoot
     public DateTimeOffset CreatedAt { get; }
     public DateTimeOffset? UpdatedAt { get; private set; }
 
-    public Money Subtotal =>
-        _items
-            .Where(i => i.IsAvailable)
-            .Aggregate(Money.Zero(Currency.USD), (sum, i) => sum + i.LineTotal);
+    //public Money Subtotal =>
+    //    _items
+    //        .Where(i => i.IsAvailable)
+    //        .Aggregate(Money.Zero(Currency.USD), (sum, i) => sum + i.LineTotal);
 
     public static Cart Create(
         Guid buyerId,
@@ -56,7 +55,7 @@ public sealed class Cart : AggregateRoot
         Guid vendorId, 
         Quantity quantity,
         Quantity availableQuantity,
-        Money unitPrice, DateTimeOffset now)
+        DateTimeOffset now)
     {
         var existing = _items.FirstOrDefault(i => i.VariantId == variantId);
 
@@ -72,7 +71,6 @@ public sealed class Cart : AggregateRoot
                 vendorId,
                 quantity,
                 availableQuantity,
-                unitPrice,
                 now);
 
             if (itemResult.IsFailure)
@@ -86,7 +84,6 @@ public sealed class Cart : AggregateRoot
             var result = existing.Increase(
                 quantity, 
                 availableQuantity,
-                unitPrice,
                 now);
 
             if (result.IsFailure)
@@ -186,30 +183,6 @@ public sealed class Cart : AggregateRoot
         IncreaseVersion();
 
         RaiseDomainEvent(new CartItemsRemovedUnavailableDomainEvent(BuyerId));
-
-        return Ok();
-    }
-
-    public IResult SyncItemPrice(
-        Guid variantId,
-        Money newPrice, 
-        DateTimeOffset now)
-    {
-        var item = _items.FirstOrDefault(i => i.VariantId == variantId);
-
-        if (item is null)
-            return Fail(CartItemErrors.NotFound());
-
-        var old = item.UnitPrice;
-
-        if (!item.SyncPrice(newPrice, now))
-            return Ok();
-
-        UpdatedAt = now;
-
-        IncreaseVersion();
-
-        RaiseDomainEvent(new CartItemPriceChangedDomainEvent(BuyerId));
 
         return Ok();
     }

@@ -26,7 +26,7 @@ namespace CartService.Infrastructure.Data.Migrations
                     BuyerId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     CreatedAt = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false),
                     UpdatedAt = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: true),
-                    RowVersion = table.Column<byte[]>(type: "rowversion", rowVersion: true, nullable: false),
+                    RowVersion = table.Column<byte[]>(type: "rowversion", rowVersion: true, nullable: true),
                     Version = table.Column<long>(type: "bigint", nullable: false)
                 },
                 constraints: table =>
@@ -113,16 +113,18 @@ namespace CartService.Infrastructure.Data.Migrations
                 schema: "cart_write",
                 columns: table => new
                 {
+                    PriceId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     ProductVariantId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    IsBase = table.Column<bool>(type: "bit", nullable: false),
+                    Currency = table.Column<string>(type: "nvarchar(3)", maxLength: 3, nullable: false),
+                    AmountMinor = table.Column<long>(type: "bigint", nullable: false),
                     UpdatedAt = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false),
                     Version = table.Column<long>(type: "bigint", nullable: false),
-                    RowVersion = table.Column<byte[]>(type: "rowversion", rowVersion: true, nullable: true),
-                    UnitPrice_Amount = table.Column<decimal>(type: "decimal(18,2)", precision: 18, scale: 2, nullable: false),
-                    UnitPrice_Currency = table.Column<string>(type: "nvarchar(3)", maxLength: 3, nullable: true)
+                    RowVersion = table.Column<byte[]>(type: "rowversion", rowVersion: true, nullable: true)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_ProductVariantPriceSnapshots", x => x.ProductVariantId);
+                    table.PrimaryKey("PK_ProductVariantPriceSnapshots", x => x.PriceId);
                 });
 
             migrationBuilder.CreateTable(
@@ -151,11 +153,7 @@ namespace CartService.Infrastructure.Data.Migrations
                     Quantity = table.Column<int>(type: "int", nullable: false),
                     UpdatedAt = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: true),
                     CartId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    PriceWhenAdded_Amount = table.Column<decimal>(type: "decimal(18,2)", precision: 18, scale: 2, nullable: false),
-                    PriceWhenAdded_Currency = table.Column<string>(type: "nvarchar(3)", maxLength: 3, nullable: true),
-                    UnitPrice_Amount = table.Column<decimal>(type: "decimal(18,2)", precision: 18, scale: 2, nullable: false),
-                    UnitPrice_Currency = table.Column<string>(type: "nvarchar(3)", maxLength: 3, nullable: true),
-                    RowVersion = table.Column<byte[]>(type: "varbinary(max)", nullable: false),
+                    RowVersion = table.Column<byte[]>(type: "varbinary(max)", nullable: true),
                     Version = table.Column<long>(type: "bigint", nullable: false)
                 },
                 constraints: table =>
@@ -319,6 +317,21 @@ namespace CartService.Infrastructure.Data.Migrations
                 schema: "cart_write",
                 table: "ProductSuspensionReasons",
                 column: "ProductId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ProductVariantPriceSnapshots_ProductVariantId",
+                schema: "cart_write",
+                table: "ProductVariantPriceSnapshots",
+                column: "ProductVariantId",
+                unique: true,
+                filter: "[IsBase] = 1");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ProductVariantPriceSnapshots_ProductVariantId_Currency",
+                schema: "cart_write",
+                table: "ProductVariantPriceSnapshots",
+                columns: new[] { "ProductVariantId", "Currency" },
+                unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "IX_ProductVariantSnapshots_ProductId",

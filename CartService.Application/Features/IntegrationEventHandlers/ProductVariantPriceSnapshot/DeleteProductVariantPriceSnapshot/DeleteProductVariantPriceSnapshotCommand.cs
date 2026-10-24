@@ -1,4 +1,4 @@
 ﻿using MediatR;
 namespace CartService.Application.Features.IntegrationEventHandlers.ProductVariantPriceSnapshot.DeleteProductVariantPriceSnapshot;
 
-public sealed record DeleteProductVariantPriceSnapshotCommand(Guid ProductVariantId) : IRequest;
+public sealed record DeleteProductVariantPriceSnapshotCommand(Guid PriceId) : IRequest;
