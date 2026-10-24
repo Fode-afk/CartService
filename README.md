@@ -2,7 +2,7 @@
 
 Shopping cart microservice of **MigApp**, an e-commerce marketplace platform built on microservices and CQRS.
 
-CartService owns one thing: the buyer's cart. It stores which product **variants** a buyer wants, in what quantity, at what price, and whether each line can still be bought. It does not reserve stock and does not create orders.
+CartService owns one thing: the buyer's cart. It stores which product **variants** a buyer wants, in what quantity, and whether each line can still be bought. It does not store prices: they are resolved from local price snapshots every time the cart is read. It does not reserve stock and does not create orders.
 
 ## Contents
 
@@ -19,7 +19,7 @@ CartService owns one thing: the buyer's cart. It stores which product **variants
 - [Observability](#observability)
 - [Getting started](#getting-started)
 - [Design decisions](#design-decisions)
-- [Roadmap](#roadmap)
+- [Related services](#related-services)
 
 ## Responsibilities
 
@@ -27,9 +27,9 @@ CartService owns one thing: the buyer's cart. It stores which product **variants
 |---|---|
 | Keep one active cart per buyer | Reserve or decrement stock (done at order creation) |
 | Add, change, remove and clear items (one line per product variant) | Create or pay orders |
-| Track price changes since an item was added | Own product data such as names, photos and attributes |
-| Mark items unavailable and explain why | Decide prices (PricingService does) |
-| Return the cart with totals in the buyer's display currency | Charge in any currency other than the system currency (USD) |
+| Resolve each item's price at read time from local price snapshots | Decide prices (PricingService does) |
+| Mark items unavailable and explain why (including "no price") | Own product data such as names, photos and attributes |
+| Return the cart with totals in the buyer's display currency | Fix the final price or amount to pay (OrderService does, using PricingService) |
 
 ## Architecture
 
@@ -52,7 +52,7 @@ flowchart LR
 CartService follows Clean Architecture with CQRS:
 
 - **Writes** go through the `Cart` aggregate and EF Core.
-- **Reads** use a dedicated read repository and read DTOs, never the aggregate. The repository queries the same `DbContext` with `AsNoTracking` projections.
+- **Reads** are served by query handlers that use `AsNoTracking` queries on the same `DbContext` and map the result to read DTOs. Reads never go through aggregate behaviour.
 - **Other services' data** arrives as integration events and is kept in local snapshots, so the cart never calls other services on the hot path.
 
 ## Tech stack
@@ -63,12 +63,12 @@ CartService follows Clean Architecture with CQRS:
 | API | gRPC (`cart.v1`) |
 | CQRS | MediatR with validation and tracing pipeline behaviours |
 | Writes | EF Core, SQL Server |
-| Reads | EF Core (`AsNoTracking` projections into read DTOs), SQL Server |
+| Reads | EF Core (`AsNoTracking` queries mapped to read DTOs), SQL Server |
 | Messaging | MassTransit over RabbitMQ |
 | Cache | FusionCache (memory + Redis, backplane) |
 | Observability | OpenTelemetry (traces, metrics), Serilog (JSON logs) |
 | Errors | `Result` pattern with error codes, no exceptions for business failures |
-| Shared code | `migApp.Shared` (results, value objects, behaviours, caching, gRPC helpers) |
+| Shared code | `migApp.Shared` (results, value objects, money conversion, behaviours, caching, gRPC helpers) |
 
 ## Solution layout
 
@@ -89,13 +89,11 @@ classDiagram
     class Cart {
         +Guid BuyerId
         +long Version
-        +Money Subtotal
         +AddItem()
         +ChangeQuantity()
         +RemoveItem()
         +Clear()
         +RemoveUnavailable()
-        +SyncItemPrice()
         +SuspendItem()
         +TryRestoreItem()
     }
@@ -104,10 +102,7 @@ classDiagram
         +Guid ProductId
         +Guid VendorId
         +Quantity Quantity
-        +Money UnitPrice
-        +Money PriceWhenAdded
         +bool IsAvailable
-        +bool IsPriceChangedSinceAdded
     }
     class CartItemSuspensionReason {
         <<enumeration>>
@@ -118,9 +113,9 @@ classDiagram
 
 **`Cart`** is the aggregate root. There is one cart per buyer. It owns its items and protects the invariants below. It carries a `Version` used for optimistic concurrency and raises a domain event for every change.
 
-**`CartItem`** is one line, identified by `VariantId` inside the cart. It stores only what the cart needs for business rules: variant, product and vendor ids, quantity, the last known unit price, the price at the moment of adding, and a set of suspension reasons.
+**`CartItem`** is one line, identified by `VariantId` inside the cart. It stores only what the cart needs for business rules: variant, product and vendor ids, quantity and a set of suspension reasons. **It holds no price.** The price is resolved when the cart is read (see [Currency handling](#currency-handling)).
 
-**Value objects:** `Money` (amount plus currency, always non-negative, validated against the currency's minor units), `Quantity` and `Currency`.
+**Value objects:** `Quantity`. `Money` and `Currency` come from `migApp.Shared` and are used by price snapshots and by read-side conversion, not by the aggregate.
 
 ### Business rules
 
@@ -129,8 +124,8 @@ classDiagram
 - Quantity is validated by the `Quantity` value object, including the per-item upper limit.
 - An item is **available** only when it has no suspension reasons. Unavailable items cannot be increased or changed, only removed.
 - **Suspension reasons are a set**, not a single status. Each source (product visibility, variant visibility, stock) adds or removes only its own reason, so a product becoming visible again never hides the fact that the variant is out of stock.
+- An item whose variant has no price snapshot is shown as unavailable with the reason `PriceUnavailable`. This is computed on read and is not stored in the aggregate.
 - The subtotal and the totals count only available items.
-- `IsPriceChangedSinceAdded` compares the current price with the price the buyer saw when adding, in USD, so exchange-rate movement is never reported as a price change.
 - Domain methods receive the current time as a parameter and never call `DateTime.UtcNow`.
 
 ## How it works
@@ -147,7 +142,7 @@ sequenceDiagram
 
     C->>G: AddCartItem(buyer, variant, quantity, currency)
     G->>H: AddCartItemCommand
-    H->>DB: load cart, variant and price snapshots
+    H->>DB: load cart and variant, product, price and stock snapshots
     H->>A: AddItem(...)
     A-->>H: Result
     H->>DB: SaveChanges
@@ -155,14 +150,18 @@ sequenceDiagram
     G-->>C: CartResponse
 ```
 
-Command handlers return only a `Result`. The API layer then runs `GetCartQuery`, so every mutation answers with the fresh cart (same database, so it reads its own writes). Totals, availability and price-change flags are always computed on the server.
+Command handlers return only a `Result`. The API layer then runs `GetCartQuery`, so every mutation answers with the fresh cart (same database, so it reads its own writes). Totals, availability and prices are always computed on the server.
+
+Adding an item requires that the variant has a price snapshot, so an item without any price cannot enter the cart.
 
 ### Read path
 
-1. The read repository loads the cart and its lines in USD minor units with an `AsNoTracking` projection straight into read DTOs, without materialising the aggregate.
-2. The read DTO is cached per buyer (see [Caching](#caching)).
-3. The mapper converts prices to the requested display currency and computes line totals and totals.
-4. If the exchange rate is unavailable, the cart is returned in USD and `Totals.Currency` says so.
+1. The query handler loads the cart (items, quantities, suspension reasons) from the cache or the database. The cached value contains no prices.
+2. **One query** loads the price snapshots of all variants in the cart: the explicit price in the requested currency and the base price.
+3. For every item the price is chosen: the explicit price in the buyer's currency if there is one, otherwise the base price. Items with no snapshot become unavailable (`PriceUnavailable`).
+4. Exchange rates are requested only for chosen prices that are not in the requested currency, one rate per source currency (`source → target`).
+5. The mapper converts and rounds the unit price once, then computes `line = unit × quantity` and the totals.
+6. If a required rate is unavailable, the query fails with `ExchangeRateUnavailable`. The cart never returns a mix of currencies in one response.
 
 Names, photos and attributes of variants are **not** part of this response. The BFF composes them from `ProductVariantReadService`, using the variant ids in the cart.
 
@@ -173,7 +172,7 @@ CartService keeps local snapshots so it can validate and update carts without ca
 | Source | What changes in CartService |
 |---|---|
 | CatalogService | Product and variant snapshots (visibility), suspension reasons on affected cart items |
-| PricingService | Price snapshots, `UnitPrice` of cart items |
+| PricingService | Price snapshots: one per Pricing price (variant and currency), with an `IsBase` flag. Created, updated or removed by price events. Cart items are not touched. |
 | Stock events | Out-of-stock suspension reason on affected cart items |
 | CurrencyService | Exchange rates in the cache |
 
@@ -198,22 +197,37 @@ Every RPC takes `buyer_id` and a `currency` code, and returns `CartResponse`:
 CartResponse
 ├── cart_id
 ├── items[]   variant_id, product_id, vendor_id, quantity,
-│             unit_price_minor, line_total_minor, price_when_added_minor,
-│             is_price_changed, is_available, suspension_reasons[]
+│             unit_price_minor, line_total_minor,
+│             is_available, suspension_reasons[]
 └── totals    distinct_items, total_quantity, subtotal_minor, currency
 ```
 
-All money values are integers in **minor units** of the response currency (cents, grosze, and so on).
+All money values are integers in **minor units** of `totals.currency`, which is always the requested currency. An item without a price has `unit_price_minor = 0` and the reason `PriceUnavailable`.
 
 Business failures are returned as `Result` errors with stable error codes and translated into gRPC status codes by a server interceptor. Clients should rely on the error code, not on the message.
 
 ## Currency handling
 
-- The **system currency is USD**. Prices are stored and validated in USD only.
-- A buyer can view the cart in another supported currency. This is **display only**: CartService converts at read time using the current rate.
-- OrderService must re-validate prices and charge in the system currency. Converted amounts in the cart are informative (approximate) and are never a source of truth for payment.
-- Conversion order: unit price is converted first and rounded, then multiplied by quantity, so `unit × quantity = line` always holds on screen and the subtotal equals the sum of the lines.
-- Exchange rates are cached for an hour with fail-safe, so a short outage of the rate source does not break the cart. If no rate is available, the cart falls back to USD.
+Prices are owned by PricingService and are stored in the **seller's currency**. For one variant PricingService can hold a **base price** (always) and **explicit prices** for other markets, one per currency. CartService mirrors them as price snapshots keyed by `(variant, currency)`.
+
+### Which price the buyer sees
+
+| Situation | Result |
+|---|---|
+| An explicit price exists in the buyer's currency | Used as is, no conversion |
+| No explicit price, the base price exists | Base price converted to the buyer's currency at read time |
+| No snapshot for the variant | Item is unavailable (`PriceUnavailable`) and excluded from totals |
+
+### Conversion rules
+
+- The rate is requested **from the price's own currency straight to the target** (`source → target`). Prices are never routed through a third currency, so there is no intermediate rounding.
+- Rounding happens **once**, at the end, to the minor unit of the target currency, away from zero. The shared helper `ConvertToMinor` (in `migApp.Shared`) is the only place with this formula.
+- The unit price is converted and rounded first, then multiplied by quantity, so `unit × quantity = line` always holds on screen and the subtotal equals the sum of the lines.
+- Rates are cached for an hour with fail-safe, so a short outage of the rate source does not break the cart. When no rate is available for a price that needs conversion, the whole query fails instead of mixing currencies.
+
+### What the cart amounts mean
+
+Amounts in the cart are an **estimate**. OrderService takes authoritative prices from PricingService at checkout and records the price, currency and exchange rate used. The cart is never a source of truth for payment.
 
 ## Persistence
 
@@ -222,17 +236,19 @@ SQL Server, schema `CartWrite`.
 | Table | Notes |
 |---|---|
 | `Carts` | Unique index on `BuyerId`. `Version` is the concurrency token. |
-| `CartItems` | Unique `(CartId, VariantId)`. Indexes on `ProductId` and `VariantId` for snapshot synchronisation. Prices are stored as `bigint` USD minor units. Suspension reasons are stored as a primitive collection. |
+| `CartItems` | Unique `(CartId, VariantId)`. Indexes on `ProductId` and `VariantId` for snapshot synchronisation. No price columns. Suspension reasons are stored as a primitive collection. |
+| `ProductVariantPriceSnapshots` | Key `PriceId` (the Pricing price id). `ProductVariantId`, `Currency`, `AmountMinor`, `IsBase` and the source `Version` are plain columns. Unique index on `(ProductVariantId, Currency)` and a filtered unique index on `ProductVariantId` where `IsBase`, so a variant has exactly one base price. `UnitPrice` is a computed `Money`, not a column. |
 
-Product, variant and price snapshots live in their own tables and carry the source `Version`.
+Product and variant snapshots live in their own tables and also carry the source `Version`.
 
-Writes use EF Core and the aggregate. Reads go through the same `DbContext` but bypass the aggregate: `AsNoTracking` queries project straight into read DTOs.
+Writes use EF Core and the aggregate. Reads go through the same `DbContext` but bypass aggregate behaviour: `AsNoTracking` queries mapped to read DTOs.
 
 ## Caching
 
 FusionCache with a memory layer, Redis as the distributed layer and a Redis backplane. The cache has its own name so that backplane channels do not collide with other services sharing the same Redis.
 
-- **Cart read DTO**: cached per buyer **in USD**, under one key. The display currency is applied after the cache, so one entry serves every currency. The entry must be invalidated after every successful change to the cart, including changes made by snapshot synchronisation.
+- **Cart state**: cached per buyer under one key. It holds items, quantities and suspension reasons, and **no prices and no currency**, so one entry serves every currency and price changes never invalidate it. The entry must be invalidated after every successful change to the cart, including changes made by snapshot synchronisation (for example a new suspension reason).
+- **Price snapshots**: not cached. They are read with one indexed query per cart read.
 - **Exchange rates**: cached for one hour with fail-safe enabled.
 
 Cache hits and misses come from FusionCache's own OpenTelemetry instrumentation.
@@ -323,9 +339,15 @@ dotnet test
 
 **Local snapshots instead of synchronous calls.** The cart keeps working when other services are slow or down, and checks stay in one database. The price is eventual consistency, which the checkout re-validation covers.
 
-**USD storage, display-only conversion.** One stored currency means one price per variant and no drift from exchange rates inside the cart. A buyer's currency is a presentation concern and is applied at read time.
+**Prices are resolved on read, not stored in the cart.** The price shown always matches the storefront for the buyer's currency, and a price change does not have to be pushed into every cart that contains the variant. It also keeps the cached cart free of prices, so price events never invalidate it.
 
-**Cache in USD, convert after the cache.** One cache entry per buyer instead of one per buyer and currency, and one invalidation point.
+**Explicit market price first, converted base price second.** A seller's own price for a market is shown exactly as set. Only when there is none is the base price converted, so a seller's number is never replaced by a rate-dependent one without need.
+
+**Convert from the price's own currency, round once.** Converting through a pivot currency and rounding in between makes a round trip lose a unit. A direct `source → target` conversion with one rounding at the end avoids that.
+
+**Never mix currencies in one response.** If a rate is missing, the query fails. A partial conversion would make the subtotal meaningless.
+
+**Cache the cart without prices, convert after the cache.** One cache entry per buyer instead of one per buyer and currency, and one invalidation point.
 
 **Commands return `Result`, the API layer returns the cart.** The command side stays free of read concerns, while clients still get the full, fresh cart in one round trip.
 
@@ -336,6 +358,6 @@ dotnet test
 | Service | Relationship |
 |---|---|
 | CatalogService / ProductVariantReadService | Source of product and variant data, and of display details used by the BFF |
-| PricingService | Source of variant prices |
+| PricingService | Source of variant prices: a base price and explicit prices per market |
 | CurrencyService | Source of exchange rates |
-| OrderService | Consumes the cart at checkout and re-validates prices and stock |
+| OrderService | Consumes the cart at checkout, takes authoritative prices from PricingService and re-validates stock |
