@@ -22,7 +22,13 @@ public sealed class AddProductVariantPriceSnapshotCommandHandler(
 
         if (currencyResult.IsFailure)
         {
-            // log
+            logger.LogWarning(
+                "Invalid currency in {Command}: ProductVariantId={ProductVariantId}, Version={Version}, Currency={Currency}, Error={@Error}",
+                nameof(AddProductVariantPriceSnapshotCommand),
+                request.ProductVariantId,
+                request.Version,
+                request.Currency,
+                currencyResult.Error);
             return;
         }
 

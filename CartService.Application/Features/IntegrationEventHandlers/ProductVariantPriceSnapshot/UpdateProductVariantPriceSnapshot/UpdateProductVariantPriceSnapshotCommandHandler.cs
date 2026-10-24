@@ -38,7 +38,13 @@ public sealed class UpdateProductVariantPriceSnapshotCommandHandler(
 
         if (currencyResult.IsFailure)
         {
-            // log
+            logger.LogWarning(
+               "Invalid currency in {Command}: ProductVariantId={ProductVariantId}, Version={Version}, Currency={Currency}, Error={@Error}",
+               nameof(UpdateProductVariantPriceSnapshotCommand),
+               request.ProductVariantId,
+               request.Version,
+               request.Currency,
+               currencyResult.Error);
             return;
         }
 
