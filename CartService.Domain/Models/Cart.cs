@@ -30,11 +30,6 @@ public sealed class Cart : AggregateRoot
     public DateTimeOffset CreatedAt { get; }
     public DateTimeOffset? UpdatedAt { get; private set; }
 
-    //public Money Subtotal =>
-    //    _items
-    //        .Where(i => i.IsAvailable)
-    //        .Aggregate(Money.Zero(Currency.USD), (sum, i) => sum + i.LineTotal);
-
     public static Cart Create(
         Guid buyerId,
         DateTimeOffset now)

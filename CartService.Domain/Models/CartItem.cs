@@ -37,9 +37,6 @@ public sealed class CartItem : Entity
     public DateTimeOffset AddedAt { get; }
     public DateTimeOffset? UpdatedAt { get; private set; }
 
-    //public Money LineTotal => UnitPrice * Quantity.Value;
-    //public bool IsPriceChangedSinceAdded => UnitPrice != PriceWhenAdded;
-
     internal static IResult<CartItem> Create(
         Guid variantId,
         Guid productId,
