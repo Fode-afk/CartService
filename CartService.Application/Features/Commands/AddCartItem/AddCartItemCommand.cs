@@ -6,5 +6,4 @@ namespace CartService.Application.Features.Commands.AddCartItem;
 public sealed record AddCartItemCommand(
     Guid BuyerId,
     Guid VariantId,
-    int Quantity,
-    string Currency) : IRequest<IResult>;
+    int Quantity) : IRequest<IResult>;

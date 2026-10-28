@@ -19,7 +19,6 @@ internal sealed class AppDbContext(
 
     public DbSet<ProductSnapshot> ProductSnapshots { get; set; }
     public DbSet<ProductVariantSnapshot> ProductVariantSnapshots { get; set; }
-    public DbSet<ProductVariantPriceSnapshot> ProductVariantPriceSnapshots { get; set; }
     public DbSet<ProductVariantInventorySnapshot> ProductVariantInventorySnapshots { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)

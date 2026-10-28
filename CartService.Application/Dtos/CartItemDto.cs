@@ -5,7 +5,5 @@ public sealed record CartItemDto(
     Guid ProductId,
     Guid VendorId,
     int Quantity,
-    long UnitPriceMinor,
-    long LineTotalMinor,
     bool IsAvailable,
     IReadOnlyList<string> SuspensionReasons);

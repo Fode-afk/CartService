@@ -21,41 +21,34 @@ message AddCartItemRequest {
     string buyer_id = 1;
     string variant_id = 2;
     int32 quantity = 3;
-    string currency_code = 4;
 }
 
 message ChangeCartItemQuantityRequest {
     string buyer_id = 1;
     string variant_id = 2;
     int32 quantity = 3;
-    string currency_code = 4;
 }
 
 message ClearCartRequest {
     string buyer_id = 1;
-    string currency_code = 2;
 }
 
 message RemoveCartItemRequest {
     string buyer_id = 1;
     string variant_id = 2;
-    string currency_code = 3;
 }
 
 message RemoveUnavailableCartItemsRequest {
     string buyer_id = 1;
-    string currency_code = 2;
 }
 
 message GetCartRequest {
     string buyer_id = 1;
-    string currency_code = 2;
 }
 
 message CartResponse {
     string cart_id = 1;
     repeated CartItemResponse items = 2;
-    CartTotalsResponse totals = 3;
 }
 
 message CartItemResponse {
@@ -63,15 +56,6 @@ message CartItemResponse {
     string product_id = 2;
     string vendor_id = 3;
     int32 quantity = 4;
-    int64 unit_price_minor = 5;
-    int64 line_total_minor = 6;
-    bool is_available = 7;
-    repeated string suspension_reasons = 8;
-}
-
-message CartTotalsResponse {
-    int32 distinct_items = 1;
-    int32 total_quantity = 2;
-    int64 subtotal_minor = 3;
-    string currency = 4;
+    bool is_available = 5;
+    repeated string suspension_reasons = 6;
 }

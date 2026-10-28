@@ -5,40 +5,21 @@ namespace CartService.Api.Grpc.Mapping;
 
 internal static class CartGrpcMapper
 {
-    public static CartResponse ToResponse(this CartDto dto)
-    {
-        var response = new CartResponse
+    public static CartResponse ToResponse(this CartDto dto) =>
+        new()
         {
             CartId = dto.CartId.ToString(),
-            Totals = new CartTotalsResponse
-            {
-                DistinctItems = dto.Totals.DistinctItems,
-                TotalQuantity = dto.Totals.TotalQuantity,
-                SubtotalMinor = dto.Totals.SubtotalMinor,
-                Currency = dto.Totals.Currency
-            }
+            Items = { dto.Items.Select(ToItemResponse) }
         };
 
-        response.Items.AddRange(dto.Items.Select(ToItemResponse));
-
-        return response;
-    }
-
-    private static CartItemResponse ToItemResponse(CartItemDto item)
-    {
-        var response = new CartItemResponse
+    private static CartItemResponse ToItemResponse(CartItemDto item) =>
+        new()
         {
             VariantId = item.VariantId.ToString(),
             ProductId = item.ProductId.ToString(),
             VendorId = item.VendorId.ToString(),
             Quantity = item.Quantity,
-            UnitPriceMinor = item.UnitPriceMinor,
-            LineTotalMinor = item.LineTotalMinor,
-            IsAvailable = item.IsAvailable
+            IsAvailable = item.IsAvailable,
+            SuspensionReasons = { item.SuspensionReasons }
         };
-
-        response.SuspensionReasons.AddRange(item.SuspensionReasons);
-
-        return response;
-    }
 }

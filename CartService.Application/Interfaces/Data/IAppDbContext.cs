@@ -12,7 +12,6 @@ public interface IAppDbContext
 
     DbSet<ProductSnapshot> ProductSnapshots { get; }
     DbSet<ProductVariantSnapshot> ProductVariantSnapshots { get; }
-    DbSet<ProductVariantPriceSnapshot> ProductVariantPriceSnapshots { get; }
     DbSet<ProductVariantInventorySnapshot> ProductVariantInventorySnapshots { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);

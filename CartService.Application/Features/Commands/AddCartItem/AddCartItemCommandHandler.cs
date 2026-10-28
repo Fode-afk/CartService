@@ -1,10 +1,8 @@
 ﻿using CartService.Application.Interfaces.Data;
 using CartService.Domain.Errors;
-using CartService.Domain.Snapshots;
 using CartService.Domain.ValueObjects;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
-using migApp.Shared.Domain.ValueObjects;
 using migApp.Shared.Results;
 using static migApp.Shared.Results.ResultFactory;
 
@@ -36,17 +34,6 @@ public sealed class AddCartItemCommandHandler(
 
         if (productSnapshot == null || !productSnapshot.IsVisiblePublicly)
             return Fail(ProductSnapshotErrors.NotFound());
-
-        var currencyResult = Currency.Create(request.Currency);
-
-        if (currencyResult.IsFailure)
-            return currencyResult;
-
-        var hasProductVariantPriceSnapshot = await context.ProductVariantPriceSnapshots
-            .AnyAsync(p => p.ProductVariantId == request.VariantId && p.IsBase, cancellationToken);
-
-        if (!hasProductVariantPriceSnapshot)
-            return Fail(ProductVariantPriceSnapshotErrors.NotFound());
 
         var quantityResult = Quantity.Create(request.Quantity);
 

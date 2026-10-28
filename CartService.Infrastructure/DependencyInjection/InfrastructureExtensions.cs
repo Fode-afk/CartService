@@ -1,7 +1,6 @@
 ﻿using CartService.Application.Interfaces.Data;
 using CartService.Application.Interfaces.Jobs;
 using CartService.Application.Interfaces.Metrics;
-using CartService.Application.Interfaces.Services;
 using CartService.Infrastructure.Behaviours;
 using CartService.Infrastructure.Data;
 using CartService.Infrastructure.DependencyInjection;
@@ -11,8 +10,6 @@ using CartService.Infrastructure.Messaging;
 using CartService.Infrastructure.Messaging.Consumers;
 using CartService.Infrastructure.Messaging.IntegrationEvents;
 using CartService.Infrastructure.Observability;
-using CartService.Infrastructure.Services;
-using CartService.Infrastructure.Services.Grpc.Clients;
 using Hangfire;
 using MassTransit;
 using MediatR;
@@ -27,16 +24,13 @@ using migApp.Shared.Behaviours;
 using migApp.Shared.Caching;
 using migApp.Shared.Domain.Primitives;
 using migApp.Shared.Grpc;
-using migApp.Shared.Utils;
 using OpenTelemetry;
 using OpenTelemetry.Exporter;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
-using Polly;
 using RabbitMQ.Client;
 using ZiggyCreatures.Caching.Fusion;
-using Protos = CurrencyService.Api.Grpc.V1.Protos;
 
 namespace CartService.Infrastructure.DependencyInjection;
 
@@ -50,8 +44,7 @@ public static class InfrastructureExtensions
             .AddDatabase(configuration)
             .AddHangfire(configuration)
             .AddCache(configuration)
-            .AddGrpcServices(configuration)
-            .AddCircuitBreaker()
+            .AddGrpcServices()
             .AddHealth(configuration)
             .AddMessaging()
             .AddIntegrationEventHandlers()
@@ -60,9 +53,6 @@ public static class InfrastructureExtensions
 
     private static IServiceCollection AddServices(this IServiceCollection services)
     {
-        services.AddScoped<ICurrencyService, CurrencyServiceClient>();
-        services.AddScoped<IExchangeRateService, ExchangeRateService>();
-
         services.AddTransient<IDomainEventsDispatcher, DomainEventsDispatcher>();
       
         return services;
@@ -140,28 +130,15 @@ public static class InfrastructureExtensions
         return services;
     }
 
-    private static IServiceCollection AddGrpcServices(this IServiceCollection services, IConfiguration configuration)
+    private static IServiceCollection AddGrpcServices(this IServiceCollection services)
     {
         services.AddGrpc(options =>
         {
             options.Interceptors.Add<GrpcExceptionInterceptor>();
         });
 
-        string CurrencyServiceConnectionString = configuration.GetConnectionString("CurrencyService")
-            ?? throw new InvalidOperationException("CurrencyService connection string is missing");
-
-        services.AddGrpcClient<Protos.CurrencyService.CurrencyServiceClient>(options =>
-        {
-            options.Address = new Uri(CurrencyServiceConnectionString);
-        });
-
         return services;
     }
-
-    private static IServiceCollection AddCircuitBreaker(this IServiceCollection services) =>
-       services.AddSingleton(sp =>
-           CircuitBreakerPolicy.GetCircuitBreakerPolicy(
-               sp.GetRequiredService<ILogger<IAsyncPolicy>>()));
 
     private static IServiceCollection AddHealth(this IServiceCollection services, IConfiguration configuration)
     {

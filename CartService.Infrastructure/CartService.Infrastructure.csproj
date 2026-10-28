@@ -65,10 +65,6 @@
     <Folder Include="Messaging\IntegrationEvents\Handlers\" />
   </ItemGroup>
 
-  <ItemGroup>
-  	<Protobuf Include="Services\Grpc\Protos\CurrencyService.proto" GrpcServices="Client" />
-  </ItemGroup>
-
 	<ItemGroup>
     <Reference Include="migApp.Shared">
       <HintPath>..\..\migApp.Shared\bin\Debug\net10.0\migApp.Shared.dll</HintPath>
