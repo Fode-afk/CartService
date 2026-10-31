@@ -12,11 +12,11 @@ using migApp.Shared.Grpc;
 
 namespace CartService.Api.Grpc.V1;
 
-internal sealed class GrpcServer(IMediator mediator) : Protos.CartService.CartServiceBase
+internal sealed class GrpcServer(ISender sender) : Protos.CartService.CartServiceBase
 {
     public override async Task<CartResponse> AddCartItem(AddCartItemRequest request, ServerCallContext context)
     {
-        var result = await mediator.Send(new AddCartItemCommand(
+        var result = await sender.Send(new AddCartItemCommand(
             Guid.Parse(request.BuyerId),
             Guid.Parse(request.VariantId),
             request.Quantity), context.CancellationToken);
@@ -27,7 +27,7 @@ internal sealed class GrpcServer(IMediator mediator) : Protos.CartService.CartSe
 
     public override async Task<CartResponse> ChangeCartItemQuantity(ChangeCartItemQuantityRequest request, ServerCallContext context)
     {
-        var result = await mediator.Send(new ChangeCartItemQuantityCommand(
+        var result = await sender.Send(new ChangeCartItemQuantityCommand(
            Guid.Parse(request.BuyerId),
            Guid.Parse(request.VariantId),
            request.Quantity), context.CancellationToken);
@@ -38,7 +38,7 @@ internal sealed class GrpcServer(IMediator mediator) : Protos.CartService.CartSe
 
     public override async Task<CartResponse> ClearCart(ClearCartRequest request, ServerCallContext context)
     {
-        var result = await mediator.Send(
+        var result = await sender.Send(
             new ClearCartCommand(Guid.Parse(request.BuyerId)),
             context.CancellationToken);
         result.ThrowIfFailure();
@@ -48,7 +48,7 @@ internal sealed class GrpcServer(IMediator mediator) : Protos.CartService.CartSe
 
     public override async Task<CartResponse> RemoveCartItem(RemoveCartItemRequest request, ServerCallContext context)
     {
-        var result = await mediator.Send(new RemoveCartItemCommand(
+        var result = await sender.Send(new RemoveCartItemCommand(
           Guid.Parse(request.BuyerId),
           Guid.Parse(request.VariantId)), context.CancellationToken);
         result.ThrowIfFailure();
@@ -58,7 +58,7 @@ internal sealed class GrpcServer(IMediator mediator) : Protos.CartService.CartSe
 
     public override async Task<CartResponse> RemoveUnavailableCartItems(RemoveUnavailableCartItemsRequest request, ServerCallContext context)
     {
-        var result = await mediator.Send(
+        var result = await sender.Send(
             new RemoveUnavailableCartItemsCommand(Guid.Parse(request.BuyerId)),
             context.CancellationToken);
         result.ThrowIfFailure();
@@ -72,6 +72,6 @@ internal sealed class GrpcServer(IMediator mediator) : Protos.CartService.CartSe
     private async Task<CartResponse> GetCart(
         string buyerId,
         CancellationToken cancellationToken = default) =>
-        (await mediator.Send(new GetCartQuery(Guid.Parse(buyerId)), cancellationToken))
+        (await sender.Send(new GetCartQuery(Guid.Parse(buyerId)), cancellationToken))
             .ThrowIfFailure().ToResponse();
 }

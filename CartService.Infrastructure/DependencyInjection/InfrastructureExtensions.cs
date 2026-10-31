@@ -51,12 +51,8 @@ public static class InfrastructureExtensions
             .AddObservability(configuration)
             .AddBehaviours();
 
-    private static IServiceCollection AddServices(this IServiceCollection services)
-    {
+    private static IServiceCollection AddServices(this IServiceCollection services) =>
         services.AddTransient<IDomainEventsDispatcher, DomainEventsDispatcher>();
-      
-        return services;
-    }
 
     private static IServiceCollection AddDatabase(this IServiceCollection services, IConfiguration configuration)
     {
@@ -65,9 +61,7 @@ public static class InfrastructureExtensions
 
         services.AddDbContext<AppDbContext>(options =>
             options.UseSqlServer(connectionString, sqlOptions =>
-            {
-                sqlOptions.MigrationsHistoryTable("__EFMigrationsHistory", Schemas.CartWrite);
-            }));
+                sqlOptions.MigrationsHistoryTable("__EFMigrationsHistory", Schemas.CartWrite)));
 
         services.AddScoped<IAppDbContext>(provider => provider.GetRequiredService<AppDbContext>());
 
@@ -132,11 +126,7 @@ public static class InfrastructureExtensions
 
     private static IServiceCollection AddGrpcServices(this IServiceCollection services)
     {
-        services.AddGrpc(options =>
-        {
-            options.Interceptors.Add<GrpcExceptionInterceptor>();
-        });
-
+        services.AddGrpc(options => options.Interceptors.Add<GrpcExceptionInterceptor>());
         return services;
     }
 
@@ -238,18 +228,12 @@ public static class InfrastructureExtensions
         return services;
     }
 
-    private static IServiceCollection AddIntegrationEventHandlers(this IServiceCollection services)
-    {
-        var assembly = typeof(IntegrationEventsAssemblyMarker).Assembly;
-
+    private static IServiceCollection AddIntegrationEventHandlers(this IServiceCollection services) =>
         services.Scan(scan => scan
-            .FromAssemblies(assembly)
+            .FromAssemblies(typeof(IntegrationEventsAssemblyMarker).Assembly)
             .AddClasses(classes => classes.AssignableTo(typeof(IPreCommitDomainEventHandler<>)))
             .AsImplementedInterfaces()
             .WithScopedLifetime());
-
-        return services;
-    }
 
     private static IServiceCollection AddObservability(
         this IServiceCollection services,
@@ -282,11 +266,8 @@ public static class InfrastructureExtensions
         return services;
     }
 
-    private static IServiceCollection AddBehaviours(this IServiceCollection services)
-    {
-        services.AddTransient(typeof(IPipelineBehavior<,>), typeof(TracingBehaviour<,>));
-        services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
-
-        return services;
-    }
+    private static IServiceCollection AddBehaviours(this IServiceCollection services) =>
+        services
+            .AddTransient(typeof(IPipelineBehavior<,>), typeof(TracingBehaviour<,>))
+            .AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
 }

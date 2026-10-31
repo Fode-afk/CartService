@@ -5,10 +5,10 @@ using migApp.Shared.Messaging.IntegrationEvents.Products;
 
 namespace CartService.Infrastructure.Messaging.Consumers.Product;
 
-public sealed class ProductCreatedIntegrationEventConsumer(IMediator mediator) : IConsumer<ProductCreatedIntegrationEvent>
+public sealed class ProductCreatedIntegrationEventConsumer(ISender sender) : IConsumer<ProductCreatedIntegrationEvent>
 {
     public async Task Consume(ConsumeContext<ProductCreatedIntegrationEvent> context) =>
-        await mediator.Send(new AddProductSnapshotCommand(
+        await sender.Send(new AddProductSnapshotCommand(
             context.Message.ProductId,
             context.Message.VendorId,
             context.Message.IsVisiblePublicly,

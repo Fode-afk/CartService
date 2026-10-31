@@ -5,10 +5,10 @@ using migApp.Shared.Messaging.IntegrationEvents.Products;
 
 namespace CartService.Infrastructure.Messaging.Consumers.Product;
 
-public sealed class ProductSuspendedIntegrationEventConsumer(IMediator mediator) : IConsumer<ProductSuspendedIntegrationEvent>
+public sealed class ProductSuspendedIntegrationEventConsumer(ISender sender) : IConsumer<ProductSuspendedIntegrationEvent>
 {
     public async Task Consume(ConsumeContext<ProductSuspendedIntegrationEvent> context) =>
-        await mediator.Send(new UpdateProductSnapshotCommand(
+        await sender.Send(new UpdateProductSnapshotCommand(
             context.Message.ProductId,
             context.Message.IsVisiblePublicly,
             context.Message.Version), context.CancellationToken);

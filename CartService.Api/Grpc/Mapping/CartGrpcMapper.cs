@@ -12,7 +12,7 @@ internal static class CartGrpcMapper
             Items = { dto.Items.Select(ToItemResponse) }
         };
 
-    private static CartItemResponse ToItemResponse(CartItemDto item) =>
+    private static CartItemResponse ToItemResponse(this CartItemDto item) =>
         new()
         {
             VariantId = item.VariantId.ToString(),

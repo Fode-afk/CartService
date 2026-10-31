@@ -1,5 +1,4 @@
-﻿using CartService.Application.DependencyInjection;
-using FluentValidation;
+﻿using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
 using migApp.Shared.Domain.Primitives;
 
@@ -9,37 +8,15 @@ public static class ApplicationExtensions
 {
     public static IServiceCollection AddApplication(this IServiceCollection services) =>
         services
-            .AddValidators()
-            .AddMediatR()
+            .AddValidatorsFromAssembly(typeof(ApplicationAssemblyMarker).Assembly)
+            .AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(ApplicationAssemblyMarker).Assembly))
             .AddDomainEventHandlers()
-            .AddTimeProvider();
+            .AddSingleton(TimeProvider.System);
 
-    private static IServiceCollection AddValidators(this IServiceCollection services) =>
-        services.AddValidatorsFromAssembly(typeof(ApplicationAssemblyMarker).Assembly);
-
-    private static IServiceCollection AddMediatR(this IServiceCollection services)
-    {
-        services.AddMediatR(cfg =>
-        {
-            cfg.RegisterServicesFromAssembly(typeof(ApplicationAssemblyMarker).Assembly);
-        });
-
-        return services;
-    }
-
-    private static IServiceCollection AddDomainEventHandlers(this IServiceCollection services)
-    {
-        var assembly = typeof(ApplicationAssemblyMarker).Assembly;
-
+    private static IServiceCollection AddDomainEventHandlers(this IServiceCollection services) =>
         services.Scan(scan => scan
-            .FromAssemblies(assembly)
+            .FromAssemblies(typeof(ApplicationAssemblyMarker).Assembly)
             .AddClasses(classes => classes.AssignableTo(typeof(IPostCommitDomainEventHandler<>)))
             .AsImplementedInterfaces()
             .WithScopedLifetime());
-
-        return services;
-    }
-
-    private static IServiceCollection AddTimeProvider(this IServiceCollection services) =>
-        services.AddSingleton(TimeProvider.System);
 }
