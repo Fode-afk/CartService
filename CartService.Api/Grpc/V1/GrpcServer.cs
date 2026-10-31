@@ -20,7 +20,6 @@ internal sealed class GrpcServer(IMediator mediator) : Protos.CartService.CartSe
             Guid.Parse(request.BuyerId),
             Guid.Parse(request.VariantId),
             request.Quantity), context.CancellationToken);
-
         result.ThrowIfFailure();
 
         return await GetCart(request.BuyerId, context.CancellationToken);
@@ -32,7 +31,6 @@ internal sealed class GrpcServer(IMediator mediator) : Protos.CartService.CartSe
            Guid.Parse(request.BuyerId),
            Guid.Parse(request.VariantId),
            request.Quantity), context.CancellationToken);
-
         result.ThrowIfFailure();
 
         return await GetCart(request.BuyerId, context.CancellationToken);
@@ -43,7 +41,6 @@ internal sealed class GrpcServer(IMediator mediator) : Protos.CartService.CartSe
         var result = await mediator.Send(
             new ClearCartCommand(Guid.Parse(request.BuyerId)),
             context.CancellationToken);
-
         result.ThrowIfFailure();
 
         return await GetCart(request.BuyerId, context.CancellationToken);
@@ -54,7 +51,6 @@ internal sealed class GrpcServer(IMediator mediator) : Protos.CartService.CartSe
         var result = await mediator.Send(new RemoveCartItemCommand(
           Guid.Parse(request.BuyerId),
           Guid.Parse(request.VariantId)), context.CancellationToken);
-
         result.ThrowIfFailure();
 
         return await GetCart(request.BuyerId, context.CancellationToken);
@@ -65,7 +61,6 @@ internal sealed class GrpcServer(IMediator mediator) : Protos.CartService.CartSe
         var result = await mediator.Send(
             new RemoveUnavailableCartItemsCommand(Guid.Parse(request.BuyerId)),
             context.CancellationToken);
-
         result.ThrowIfFailure();
 
         return await GetCart(request.BuyerId, context.CancellationToken);
@@ -76,9 +71,7 @@ internal sealed class GrpcServer(IMediator mediator) : Protos.CartService.CartSe
 
     private async Task<CartResponse> GetCart(
         string buyerId,
-        CancellationToken cancellationToken = default)
-    {
-        var cart = await mediator.Send(new GetCartQuery(Guid.Parse(buyerId)), cancellationToken);
-        return cart.ThrowIfFailure().ToResponse();
-    }
+        CancellationToken cancellationToken = default) =>
+        (await mediator.Send(new GetCartQuery(Guid.Parse(buyerId)), cancellationToken))
+            .ThrowIfFailure().ToResponse();
 }
